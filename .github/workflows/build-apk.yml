@@ -5,6 +5,10 @@ on:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
+# 🔐 核心防禦：顯式宣告此工作流對倉庫擁有讀寫權限
+permissions:
+  contents: write
+
 jobs:
   build_with_ai_loop:
     runs-on: ubuntu-latest
@@ -12,7 +16,8 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.MY_PERSONAL_TOKEN }}
+        # 👑 關鍵修正：直接使用內建的 GITHUB_TOKEN，免去外部 Token 讀取失敗的錯誤
+        token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Unzip project files
       run: |
@@ -53,7 +58,7 @@ jobs:
           chmod +x gradlew
         fi
 
-    # 👑 核心大絕招：原地自動無限試錯迴圈 (導入專案路徑修正)
+    # 原地自動無限試錯迴圈
     - name: Build and Auto-Heal Loop with Gemini
       env:
         GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -78,7 +83,6 @@ jobs:
             tail -n 80 build.log > error.log
             cat error.log
             
-            # 定義備用模型清單
             MODELS=("gemini-3.5-flash" "gemini-3.1-flash-lite" "gemini-2.5-flash")
             RESPONSE=""
             SUCCESSFUL_MODEL=""
@@ -145,8 +149,7 @@ jobs:
             RAW_CONTENT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' 2>/dev/null)
             
             if [ -z "$RAW_CONTENT" ] || [ "$RAW_CONTENT" = "null" ]; then
-              echo "⚠️ 無法解析任何模型的回傳內容。原始 API 回應如下："
-              echo "$RESPONSE"
+              echo "⚠️ 無法解析任何模型的回傳內容。"
               EXPLANATION="API 回傳無效"
               PATCH_COMMAND="null"
             else
@@ -156,8 +159,6 @@ jobs:
             fi
             
             echo "💡 最終修復決策模型: $SUCCESSFUL_MODEL"
-            echo "💡 Gemini 的分析說明: $EXPLANATION"
-            echo "⚙️ 預期執行的修正指令: $PATCH_COMMAND"
             
             TARGET_KT=$(find . -name "MainActivity.kt" -print -quit)
             if [ ! -z "$TARGET_KT" ]; then
@@ -181,21 +182,10 @@ jobs:
               sed -i "s/collect\s*{\s*it\s*->/collect { it: SimulationState ->/g" "$TARGET_KT" || true
               
               if [ ! -z "$PATCH_COMMAND" ] && [ "$PATCH_COMMAND" != "null" ]; then
-                echo "正在執行 AI Patch..."
-                if eval "$PATCH_COMMAND"; then
-                  echo "✅ AI Patch 執行成功！"
-                else
-                  echo "⚠️ AI Patch 執行失敗，請檢查 sed 命令語法是否正確。"
-                fi
+                eval "$PATCH_COMMAND" || true
               fi
               
-              echo "=== 📝 目前原始碼變更狀態 (Git Diff) ==="
-              git diff "$TARGET_KT" || true
-              echo "========================================"
-              
               echo "// PATCH_LOOP_$(date +%s)" >> "$TARGET_KT"
-            else
-              echo "找不到 MainActivity.kt，跳過本輪修復。"
             fi
           fi
           
@@ -204,22 +194,20 @@ jobs:
         done
 
         if [ "$BUILD_SUCCESS" = false ]; then
-          echo "❌ 已達到最大嘗試次數 $MAX_ATTEMPTS 次，編編譯依然失敗。"
           exit 1
         fi
 
     - name: Verify APK Location
       if: success()
       run: |
-        echo "=== 📂 正在搜尋編譯成功的 APK 產物位置 ==="
         find . -name "*.apk"
-        echo "========================================"
 
-    # 🛑 關鍵修正：加上 [skip ci] 避免推送成功後再度觸發重新編譯
+    # 🛑 關鍵防禦：使用 GITHUB_TOKEN 安全回推並以 [skip ci] 斬斷無窮迴圈
     - name: Auto Commit Gemini Fix (Only on Success)
       if: success()
       env:
-        PERSONAL_TOKEN: ${{ secrets.MY_PERSONAL_TOKEN }}
+        # 直接拿內建 Token 注入，免除密鑰讀不到的風險
+        PERSONAL_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         git config --global user.name "Gemini-AI-Bot"
         git config --global user.email "gemini-bot@github.com"
