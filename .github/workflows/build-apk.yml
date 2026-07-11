@@ -27,10 +27,12 @@ jobs:
         java-version: '11'
         distribution: 'temurin'
 
+    # 👑 關鍵修正 1：指定這個 Actions 插件的工作目錄在子資料夾
     - name: Setup Gradle 7.5
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: '7.5'
+        build-root-directory: ./gps-simulator-android
 
     - name: Prepare Android Standard Environment
       working-directory: ./gps-simulator-android
@@ -48,16 +50,11 @@ jobs:
           cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_round.png
         done
 
-    # 👑 核心修正：不管是根目錄還是子目錄，通通強制生成並賦予執行權限
-    - name: Prepare Executable (Dual-Zone Insurance)
+    # 👑 關鍵修正 2：只在正確包含 settings.gradle 的子目錄生成 Wrapper
+    - name: Prepare Executable (Sub-folder Only)
+      working-directory: ./gps-simulator-android
       run: |
-        echo "=== 🛡️ 開始建立全域 Gradle 執行檔 ==="
-        # 1. 在最外層根目錄建立
-        gradle wrapper --gradle-version 7.5
-        chmod +x gradlew || true
-        
-        # 2. 在專案子目錄建立
-        cd gps-simulator-android
+        echo "=== 🛡️ 開始在子目錄建立 Gradle 執行檔 ==="
         gradle wrapper --gradle-version 7.5
         chmod +x gradlew || true
         echo "=== 🛡️ 執行檔建立完畢 ==="
@@ -90,9 +87,8 @@ jobs:
             sed -i '/package com.gpssimulator.service/a \\nimport androidx.core.content.ContextCompat\nimport com.gpssimulator.R' "$SERVICE_KT" || true
           fi
 
-          # 雙重確認當前目錄下真的有 gradlew 存在
           if [ ! -f "./gradlew" ]; then
-            echo "⚠️ 警告：./gradlew 遺失，正在原地重新補件..."
+            echo "⚠️ 原始碼中未檢出 gradlew，正在原地重新補件..."
             gradle wrapper --gradle-version 7.5
             chmod +x gradlew
           fi
