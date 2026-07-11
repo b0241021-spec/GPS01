@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. 檢出程式碼
+    # 1. 檢出原始碼 (確保拉回來的是乾淨、沒被剛才 sed 搞壞引號的原始檔案)
     - name: Checkout repository
       uses: actions/checkout@v4
 
@@ -20,40 +20,33 @@ jobs:
       run: |
         find . -name "*.zip" -exec unzip -o {} \;
 
-    # 3. 強制升級專案中的 Android Gradle 插件版本 (解決舊版 DataBinding 與新環境衝突)
-    - name: Upgrade Android Gradle Plugin Version
-      working-directory: ./gps-simulator-android
-      run: |
-        # 自動將 build.gradle 中的 com.android.tools.build:gradle 版本強制替換為 8.1.0
-        sed -i 's/com.android.tools.build:gradle:[^"]*/com.android.tools.build:gradle:8.1.0/g' build.gradle || true
-        sed -i "s/com.android.tools.build:gradle:[^']*/com.android.tools.build:gradle:8.1.0/g" build.gradle || true
-
-    # 4. 設定現代化 Java 17 環境
+    # 3. 設定相容性最高的 Java 17 環境
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
 
-    # 5. 下載並建立現代化 Gradle Wrapper (8.2 版本)
+    # 4. 直接下載並安裝 Android 官方最通用的 Gradle 7.4.2 Wrapper
+    # (這個版本上能相容 Java 17，下能相容舊版 DataBinding，不需修改任何專案程式碼)
     - name: Install and Generate Gradle Wrapper
       working-directory: ./gps-simulator-android
       run: |
-        wget https://services.gradle.org/distributions/gradle-8.2-bin.zip
-        unzip -q gradle-8.2-bin.zip
-        ./gradle-8.2/bin/gradle wrapper --gradle-version 8.2
+        wget https://services.gradle.org/distributions/gradle-7.4.2-bin.zip
+        unzip -q gradle-7.4.2-bin.zip
+        ./gradle-7.4.2/bin/gradle wrapper --gradle-version 7.4.2
 
-    # 6. 給予 gradlew 執行權限
+    # 5. 給予 gradlew 執行權限
     - name: Grant execute permission for gradlew
       working-directory: ./gps-simulator-android
       run: chmod +x gradlew
 
-    # 7. 編譯 Debug APK (加上 --info 確保萬一失敗有完整日誌)
+    # 6. 編譯不需要金鑰的 Debug APK
     - name: Build with Gradle
       working-directory: ./gps-simulator-android
-      run: ./gradlew assembleDebug --info
+      run: ./gradlew assembleDebug
 
-    # 8. 蒐集產出的 APK 並上傳
+    # 7. 蒐集產出的 APK 並上傳
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
