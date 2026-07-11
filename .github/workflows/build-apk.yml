@@ -5,7 +5,6 @@ on:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
-# 🔐 核心防禦：顯式宣告此工作流對倉庫擁有讀寫權限
 permissions:
   contents: write
 
@@ -16,7 +15,6 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
       with:
-        # 👑 關鍵修正：直接使用內建的 GITHUB_TOKEN，免去外部 Token 讀取失敗的錯誤
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Unzip project files
@@ -42,11 +40,14 @@ jobs:
         android.enableJetifier=true
         EOF
         
-        mkdir -p app/src/main/res/mipmap-hdpi
-        cat << 'EOF' > app/src/main/res/mipmap-hdpi/ic_launcher.png
+        # 👑 關鍵修正 1：補齊各種尺寸的遺失圖示 (解決 ic_launcher 找不到的問題)
+        for dir in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+          mkdir -p app/src/main/res/$dir
+          cat << 'EOF' > app/src/main/res/$dir/ic_launcher.png
         iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==
         EOF
-        cp app/src/main/res/mipmap-hdpi/ic_launcher.png app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+          cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_round.png
+        done
 
     - name: Prepare Executable
       working-directory: ./gps-simulator-android
@@ -58,7 +59,7 @@ jobs:
           chmod +x gradlew
         fi
 
-    # 原地自動無限試錯迴圈
+    # 👑 關鍵修正 2：拿掉原本扯後腿的強制複寫指令，交給 Gemini 自由修復
     - name: Build and Auto-Heal Loop with Gemini
       env:
         GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -160,32 +161,9 @@ jobs:
             
             echo "💡 最終修復決策模型: $SUCCESSFUL_MODEL"
             
-            TARGET_KT=$(find . -name "MainActivity.kt" -print -quit)
-            if [ ! -z "$TARGET_KT" ]; then
-              KT_DIR=$(dirname "$TARGET_KT")
-              MY_PACKAGE=$(grep "^package " "$TARGET_KT" | head -n 1)
-              
-              printf "%s\n" \
-                "$MY_PACKAGE" \
-                "data class SimulationState(" \
-                "    val isRunning: Boolean = false," \
-                "    val currentSpeed: Double = 0.0," \
-                "    val latitude: Double = 0.0," \
-                "    val longitude: Double = 0.0," \
-                "    val progress: Int = 0," \
-                "    val speedMultiplier: Float = 1.0f," \
-                "    val statusText: String = \"\"" \
-                ")" > "${KT_DIR}/SimulationState.kt"
-              
-              sed -i "s/collect\s*{\s*$/collect { state: SimulationState ->/g" "$TARGET_KT" || true
-              sed -i "s/collect\s*{\s*state\s*->/collect { state: SimulationState ->/g" "$TARGET_KT" || true
-              sed -i "s/collect\s*{\s*it\s*->/collect { it: SimulationState ->/g" "$TARGET_KT" || true
-              
-              if [ ! -z "$PATCH_COMMAND" ] && [ "$PATCH_COMMAND" != "null" ]; then
-                eval "$PATCH_COMMAND" || true
-              fi
-              
-              echo "// PATCH_LOOP_$(date +%s)" >> "$TARGET_KT"
+            if [ ! -z "$PATCH_COMMAND" ] && [ "$PATCH_COMMAND" != "null" ]; then
+              echo "⚙️ 執行 AI 修正: $PATCH_COMMAND"
+              eval "$PATCH_COMMAND" || true
             fi
           fi
           
@@ -202,11 +180,9 @@ jobs:
       run: |
         find . -name "*.apk"
 
-    # 🛑 關鍵防禦：使用 GITHUB_TOKEN 安全回推並以 [skip ci] 斬斷無窮迴圈
     - name: Auto Commit Gemini Fix (Only on Success)
       if: success()
       env:
-        # 直接拿內建 Token 注入，免除密鑰讀不到的風險
         PERSONAL_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         git config --global user.name "Gemini-AI-Bot"
