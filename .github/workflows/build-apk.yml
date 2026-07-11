@@ -40,7 +40,6 @@ jobs:
         android.enableJetifier=true
         EOF
         
-        # 補齊所有 mipmap 圖示
         for dir in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
           mkdir -p app/src/main/res/$dir
           cat << 'EOF' > app/src/main/res/$dir/ic_launcher.png
@@ -49,51 +48,102 @@ jobs:
           cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_round.png
         done
 
-    - name: Hard Fix Kotlin Files Structure
-      working-directory: ./gps-simulator-android
+    - name: Build and Safe-Heal Loop with Gemini
+      env:
+        GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
+        API_URL: "https://generativelanguage.googleapis.com/v1beta/models"
       run: |
-        TARGET_KT="app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
-        SERVICE_KT="app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt"
-        
-        echo "=== 🛠️ 開始強力清洗並重組 Kotlin 程式碼 ==="
-        
-        # 1. 清洗 MainActivity.kt：移除前面被 AI 亂插在 package 之前的 import
-        if [ -f "$TARGET_KT" ]; then
-          # 找出真正的 package 那一行，並丟棄它之前的所有內容
-          sed -i -n '/package com.gpssimulator/,$p' "$TARGET_KT"
-          
-          # 在 package 下方精準插入正確、不重複的常用 import 聲明
-          sed -i '/package com.gpssimulator.ui/a \\nimport androidx.core.content.ContextCompat\nimport com.gpssimulator.data.SimulationState\nimport com.gpssimulator.service.GPSSimulationService' "$TARGET_KT"
-          
-          # 修正 Kotlin Flow 收集器的老舊語法衝突
-          sed -i "s/collect\s*{\s*$/collect { state ->/g" "$TARGET_KT" || true
-          sed -i "s/collect\s*{\s*it\s*->/collect { state ->/g" "$TARGET_KT" || true
-        fi
-        
-        # 2. 清洗 GPSSimulationService.kt：確保 R 套件與 ContextCompat 正常匯入
-        if [ -f "$SERVICE_KT" ]; then
-          sed -i -n '/package com.gpssimulator/,$p' "$SERVICE_KT"
-          sed -i '/package com.gpssimulator.service/a \\nimport androidx.core.content.ContextCompat\nimport com.gpssimulator.R' "$SERVICE_KT"
-        fi
-        
-        echo "=== 📝 清洗完成 ==="
+        cd gps-simulator-android
+        MAX_ATTEMPTS=5
+        ATTEMPT=1
+        BUILD_SUCCESS=false
 
-    - name: Prepare Executable
-      working-directory: ./gps-simulator-android
-      run: |
-        if [ -f "gradlew" ]; then
-          chmod +x gradlew
-        else
-          gradle wrapper --gradle-version 7.5
-          chmod +x gradlew
-        fi
+        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+          echo "========================================"
+          echo "  🚀 開始第 $ATTEMPT 次嘗試編譯 APK..."
+          echo "========================================"
+          
+          # 每次編譯前，先進行結構保底清洗，確保 package 永遠在第一行
+          TARGET_KT="app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
+          SERVICE_KT="app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt"
+          
+          if [ -f "$TARGET_KT" ]; then
+            sed -i -n '/package com.gpssimulator/,$p' "$TARGET_KT"
+            sed -i '/package com.gpssimulator.ui/a \\nimport androidx.core.content.ContextCompat\nimport com.gpssimulator.service.GPSSimulationService' "$TARGET_KT" || true
+          fi
+          if [ -f "$SERVICE_KT" ]; then
+            sed -i -n '/package com.gpssimulator/,$p' "$SERVICE_KT"
+            sed -i '/package com.gpssimulator.service/a \\nimport androidx.core.content.ContextCompat\nimport com.gpssimulator.R' "$SERVICE_KT" || true
+          fi
 
-    # 直接送去編譯，不再交給 AI 瞎指揮
-    - name: Direct Build Verification
-      working-directory: ./gps-simulator-android
-      run: |
-        echo "🚀 執行最終編譯..."
-        ./gradlew assembleDebug --no-daemon
+          # 執行編譯並捕捉詳細錯誤
+          if ./gradlew assembleDebug --no-daemon > build.log 2>&1; then
+            echo "✅ 恭喜！第 $ATTEMPT 次編譯成功！"
+            BUILD_SUCCESS=true
+            break
+          else
+            echo "❌ 第 $ATTEMPT 次編譯失敗。正在擷取錯誤日誌..."
+            # 擷取關鍵錯誤
+            grep -B 3 -A 10 "e: " build.log > error.log || tail -n 50 build.log > error.log
+            
+            echo "--- 餵給 AI 的錯誤核心 ---"
+            cat error.log
+            echo "--------------------------"
+            
+            MODELS=("gemini-3.5-flash" "gemini-3.1-flash-lite")
+            RESPONSE=""
+            SUCCESSFUL_MODEL=""
+
+            for MODEL in "${MODELS[@]}"; do
+              PAYLOAD=$(jq -n --rawfile log error.log '{
+                contents: [{
+                  parts: [{
+                    text: ("你是一個 Android 專家。專案編譯發生以下錯誤：\n" + $log + "\n\n請給出一行精準的 Linux sed 指令來修正這個錯誤。注意：切勿在 package 語句之前插入程式碼。你的指令必須針對錯誤發生的具體檔案與程式碼行進行精準取代。")
+                  }]
+                }],
+                generationConfig: {
+                  responseMimeType: "application/json",
+                  responseSchema: {
+                    type: "OBJECT",
+                    properties: {
+                      explanation: { type: "STRING" },
+                      patch_command: { type: "STRING" }
+                    },
+                    required: ["patch_command"]
+                  }
+                }
+              }')
+
+              RESPONSE=$(curl -s -X POST "${API_URL}/${MODEL}:generateContent?key=${GEMINI_KEY}" \
+                -H "Content-Type: application/json" \
+                -d "$PAYLOAD")
+
+              SUCCESSFUL_MODEL=$MODEL
+              break
+            done
+
+            RAW_CONTENT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' 2>/dev/null)
+            if [ ! -z "$RAW_CONTENT" ] && [ "$RAW_CONTENT" != "null" ]; then
+              CLEANED_CONTENT=$(echo "$RAW_CONTENT" | sed 's/```json//g; s/```//g')
+              EXPLANATION=$(echo "$CLEANED_CONTENT" | jq -r '.explanation' 2>/dev/null)
+              PATCH_COMMAND=$(echo "$CLEANED_CONTENT" | jq -r '.patch_command' 2>/dev/null)
+              
+              echo "💡 Gemini 分析: $EXPLANATION"
+              echo "⚙️ 執行 AI 修正: $PATCH_COMMAND"
+              
+              if [ ! -z "$PATCH_COMMAND" ] && [ "$PATCH_COMMAND" != "null" ]; then
+                eval "$PATCH_COMMAND" || true
+              fi
+            fi
+          fi
+          
+          ATTEMPT=$((ATTEMPT+1))
+          sleep 2
+        done
+
+        if [ "$BUILD_SUCCESS" = false ]; then
+          exit 1
+        fi
 
     - name: Verify APK Location
       if: success()
