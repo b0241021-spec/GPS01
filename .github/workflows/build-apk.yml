@@ -65,7 +65,7 @@ jobs:
         API_URL: "https://generativelanguage.googleapis.com/v1beta/models"
       run: |
         cd gps-simulator-android
-        MAX_ATTEMPTS=5
+        MAX_ATTEMPTS=100
         ATTEMPT=1
         BUILD_SUCCESS=false
 
