@@ -40,7 +40,6 @@ jobs:
         android.enableJetifier=true
         EOF
         
-        # 👑 關鍵修正 1：補齊各種尺寸的遺失圖示 (解決 ic_launcher 找不到的問題)
         for dir in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
           mkdir -p app/src/main/res/$dir
           cat << 'EOF' > app/src/main/res/$dir/ic_launcher.png
@@ -59,7 +58,7 @@ jobs:
           chmod +x gradlew
         fi
 
-    # 👑 關鍵修正 2：拿掉原本扯後腿的強制複寫指令，交給 Gemini 自由修復
+    # 👑 終極校正：確保所有 log 擷取與 AI 修正都在同一個資料夾 (gps-simulator-android) 內進行
     - name: Build and Auto-Heal Loop with Gemini
       env:
         GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -75,14 +74,19 @@ jobs:
           echo "  🚀 開始第 $ATTEMPT 次嘗試編譯 APK..."
           echo "========================================"
           
-          if ./gradlew assembleDebug --no-daemon > build.log 2>&1; then
+          # 加上 --info 確保 log 夠詳細
+          if ./gradlew assembleDebug --no-daemon --info > build.log 2>&1; then
             echo "✅ 恭喜！第 $ATTEMPT 次編譯成功！"
             BUILD_SUCCESS=true
             break
           else
             echo "❌ 第 $ATTEMPT 次編譯失敗。正在擷取錯誤日誌..."
-            tail -n 80 build.log > error.log
+            # 💡 修正 1：直接過濾 Kotlin 錯誤和前後 40 行，讓 AI 精準咬住錯誤
+            grep -B 10 -A 30 "Unresolved reference" build.log > error.log || tail -n 80 build.log > error.log
+            
+            echo "--- 餵給 AI 的錯誤片段 ---"
             cat error.log
+            echo "--------------------------"
             
             MODELS=("gemini-3.5-flash" "gemini-3.1-flash-lite" "gemini-2.5-flash")
             RESPONSE=""
@@ -100,7 +104,7 @@ jobs:
                 PAYLOAD=$(jq -n --rawfile log error.log --arg m "$MODEL" '{
                   contents: [{
                     parts: [{
-                      text: ("你是一個資深 Android 專家，目前專案編譯發生以下錯誤：\n" + $log + "\n\n請給出一段精準的 Linux sed 命令幫我修復這個檔案。")
+                      text: ("你是一個資深 Android 專家，目前專案編譯發生以下錯誤：\n" + $log + "\n\n請給出一段精準的 Linux sed 命令幫我修復這個檔案。注意當前工作目錄為專案根目錄。")
                     }]
                   }],
                   generationConfig: {
@@ -114,7 +118,7 @@ jobs:
                         },
                         patch_command: {
                           type: "STRING",
-                          description: "精準的單行 Linux sed 指令來修正專案，例如: sed -i \"s/old/new/g\" path/to/MainActivity.kt"
+                          description: "精準的單行 Linux sed 指令來修正專案，例如: sed -i \"s/old/new/g\" app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
                         }
                       },
                       required: ["patch_command"]
@@ -144,25 +148,23 @@ jobs:
                   break 2
                 fi
               done
-              echo "   ❌ 模型 $MODEL 嘗試失敗，準備切換至下一個備份模型..."
             done
 
             RAW_CONTENT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' 2>/dev/null)
             
             if [ -z "$RAW_CONTENT" ] || [ "$RAW_CONTENT" = "null" ]; then
-              echo "⚠️ 無法解析任何模型的回傳內容。"
-              EXPLANATION="API 回傳無效"
+              echo "⚠️ 無化解析模型回傳內容。"
               PATCH_COMMAND="null"
             else
               CLEANED_CONTENT=$(echo "$RAW_CONTENT" | sed 's/```json//g; s/```//g')
               EXPLANATION=$(echo "$CLEANED_CONTENT" | jq -r '.explanation' 2>/dev/null)
               PATCH_COMMAND=$(echo "$CLEANED_CONTENT" | jq -r '.patch_command' 2>/dev/null)
+              echo "💡 Gemini 分析: $EXPLANATION"
+              echo "⚙️ 預期執行指令: $PATCH_COMMAND"
             fi
             
-            echo "💡 最終修復決策模型: $SUCCESSFUL_MODEL"
-            
             if [ ! -z "$PATCH_COMMAND" ] && [ "$PATCH_COMMAND" != "null" ]; then
-              echo "⚙️ 執行 AI 修正: $PATCH_COMMAND"
+              echo "執行 AI Patch..."
               eval "$PATCH_COMMAND" || true
             fi
           fi
