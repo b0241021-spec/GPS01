@@ -20,27 +20,35 @@ jobs:
       run: |
         find . -name "*.zip" -exec unzip -o {} \;
 
-    # 3. 設定 Java 環境 (Android 構建核心)
+    # 3. 設定 Java 環境
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
 
-    # 4. 給予 Gradle 執行權限 (原生專案必備步驟)
+    # 4. 安裝並建立 Gradle Wrapper (解決找不到 gradlew 的問題)
+    - name: Install and Generate Gradle Wrapper
+      working-directory: ./gps-simulator-android
+      run: |
+        sudo apt-get update && sudo apt-get install -y gradle
+        gradle wrapper
+
+    # 5. 給予新生成的 gradlew 執行權限
     - name: Grant execute permission for gradlew
       working-directory: ./gps-simulator-android
       run: chmod +x gradlew
 
-    # 5. 執行編譯 Release APK
+    # 6. 執行編譯 Release APK
     - name: Build with Gradle
       working-directory: ./gps-simulator-android
       run: ./gradlew assembleRelease
 
-    # 6. 自動搜尋編譯完成的 APK 並上傳
+    # 7. 自動搜尋編譯完成的 APK 並上傳
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: release-apk
         path: |
           gps-simulator-android/app/build/outputs/apk/release/*.apk
+          gps-simulator-android/app/build/outputs/apk/debug/*.apk
