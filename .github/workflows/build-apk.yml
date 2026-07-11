@@ -27,12 +27,15 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    # 4. 安裝並建立 Gradle Wrapper (解決找不到 gradlew 的問題)
+    # 4. 安裝並建立指定版本的 Gradle Wrapper (升級至 8.0 版本)
     - name: Install and Generate Gradle Wrapper
       working-directory: ./gps-simulator-android
       run: |
-        sudo apt-get update && sudo apt-get install -y gradle
-        gradle wrapper
+        # 使用 JDK 內建功能直接下載並安裝指定的 Gradle 8.0 版本
+        # 這樣就不會用到系統 4.4.1 的老舊版本
+        wget https://services.gradle.org/distributions/gradle-8.0-bin.zip
+        unzip -q gradle-8.0-bin.zip
+        ./gradle-8.0/bin/gradle wrapper --gradle-version 8.0
 
     # 5. 給予新生成的 gradlew 執行權限
     - name: Grant execute permission for gradlew
