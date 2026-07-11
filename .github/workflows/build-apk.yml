@@ -36,20 +36,31 @@ jobs:
         flutter-version: '3.x'
         channel: 'stable'
         cache: true
-    # 5. 取得專案依賴套件（加上 working-directory）
+    # 5. 自動尋找 Flutter 根目錄並安裝依賴
     - name: Install dependencies
-      working-directory: ./gps-simulator-android  # ⚠️ 請把「你的資料夾名稱」換成實際解壓出來的資料夾名
-      run: flutter pub get
+      run: |
+        # 尋找 pubspec.yaml 所在的資料夾路徑
+        FLUTTER_DIR=$(dirname $(find . -name "pubspec.yaml" | head -n 1))
+        echo "找到 Flutter 專案路徑: $FLUTTER_DIR"
+        
+        # 將路徑寫入環境變數，傳給後續步驟使用
+        echo "PROJECT_DIR=$FLUTTER_DIR" >> $GITHUB_ENV
+        
+        # 進入該目錄執行
+        cd $FLUTTER_DIR
+        flutter pub get
 
-    # 6. 執行建置 APK（加上 working-directory）
+    # 6. 執行建置 APK
     - name: Build APK
-      working-directory: ./gps-simulator-android  # ⚠️ 請把「你的資料夾名稱」換成實際解壓出來的資料夾名
-      run: flutter build apk --release
+      run: |
+        cd ${{ env.PROJECT_DIR }}
+        flutter build apk --release
 
-    # 7. 上傳編譯好的 APK（修改 path 路徑）
+    # 7. 自動搜尋編譯好的 APK 並上傳
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: release-apk
-        # ⚠️ 這裡的路徑前面也要加上「你的資料夾名稱」
-        path: gps-simulator-android/build/app/outputs/flutter-apk/app-release.apk
+        path: |
+          **/build/app/outputs/flutter-apk/app-release.apk
+  
