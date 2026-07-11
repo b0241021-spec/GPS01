@@ -14,6 +14,10 @@ jobs:
       with:
         token: ${{ secrets.MY_PERSONAL_TOKEN }}
 
+    - name: Unzip project files
+      run: |
+        find . -name "*.zip" -exec unzip -o {} \;
+
     - name: Set up JDK 11
       uses: actions/setup-java@v4
       with:
@@ -26,6 +30,7 @@ jobs:
         gradle-version: '7.5'
 
     - name: Prepare Android Standard Environment
+      working-directory: ./gps-simulator-android
       run: |
         cat << 'EOF' > gradle.properties
         android.useAndroidX=true
@@ -39,6 +44,7 @@ jobs:
         cp app/src/main/res/mipmap-hdpi/ic_launcher.png app/src/main/res/mipmap-hdpi/ic_launcher_round.png
 
     - name: Prepare Executable
+      working-directory: ./gps-simulator-android
       run: |
         if [ -f "gradlew" ]; then
           chmod +x gradlew
@@ -47,12 +53,13 @@ jobs:
           chmod +x gradlew
         fi
 
-    # 👑 核心大絕招：原地自動無限試錯迴圈 (多級備用模型 & 尖峰退避版)
+    # 👑 核心大絕招：原地自動無限試錯迴圈 (導入專案路徑修正)
     - name: Build and Auto-Heal Loop with Gemini
       env:
         GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
         API_URL: "https://generativelanguage.googleapis.com/v1beta/models"
       run: |
+        cd gps-simulator-android
         MAX_ATTEMPTS=5
         ATTEMPT=1
         BUILD_SUCCESS=false
@@ -71,7 +78,7 @@ jobs:
             tail -n 80 build.log > error.log
             cat error.log
             
-            # 定義備用模型清單，防範 503 Spike 尖峰
+            # 定義備用模型清單
             MODELS=("gemini-3.5-flash" "gemini-3.1-flash-lite" "gemini-2.5-flash")
             RESPONSE=""
             SUCCESSFUL_MODEL=""
@@ -114,7 +121,6 @@ jobs:
                   -H "Content-Type: application/json" \
                   -d "$PAYLOAD")
 
-                # 檢查 API 是否報錯 (如 503 Unavailable)
                 API_ERROR=$(echo "$RESPONSE" | jq -r '.error.message' 2>/dev/null)
                 API_CODE=$(echo "$RESPONSE" | jq -r '.error.code' 2>/dev/null)
 
@@ -126,11 +132,9 @@ jobs:
                     BACKOFF=$((BACKOFF * 2))
                     RETRY_COUNT=$((RETRY_COUNT + 1))
                   else
-                    # 其他非伺服器忙碌之錯誤，直接跳過該模型
                     break 2
                   fi
                 else
-                  # 成功拿到回應，記錄使用的模型並跳出重試與模型切換
                   SUCCESSFUL_MODEL=$MODEL
                   break 2
                 fi
@@ -138,7 +142,6 @@ jobs:
               echo "   ❌ 模型 $MODEL 嘗試失敗，準備切換至下一個備份模型..."
             done
 
-            # 解析最終回應
             RAW_CONTENT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' 2>/dev/null)
             
             if [ -z "$RAW_CONTENT" ] || [ "$RAW_CONTENT" = "null" ]; then
@@ -161,7 +164,6 @@ jobs:
               KT_DIR=$(dirname "$TARGET_KT")
               MY_PACKAGE=$(grep "^package " "$TARGET_KT" | head -n 1)
               
-              # 🔍 核心防禦：使用 printf 建立標準 SimulationState 檔案
               printf "%s\n" \
                 "$MY_PACKAGE" \
                 "data class SimulationState(" \
@@ -174,12 +176,10 @@ jobs:
                 "    val statusText: String = \"\"" \
                 ")" > "${KT_DIR}/SimulationState.kt"
               
-              # 預設基礎語法修正
               sed -i "s/collect\s*{\s*$/collect { state: SimulationState ->/g" "$TARGET_KT" || true
               sed -i "s/collect\s*{\s*state\s*->/collect { state: SimulationState ->/g" "$TARGET_KT" || true
               sed -i "s/collect\s*{\s*it\s*->/collect { it: SimulationState ->/g" "$TARGET_KT" || true
               
-              # 執行 Gemini 的 AI 修正指令
               if [ ! -z "$PATCH_COMMAND" ] && [ "$PATCH_COMMAND" != "null" ]; then
                 echo "正在執行 AI Patch..."
                 if eval "$PATCH_COMMAND"; then
@@ -189,7 +189,6 @@ jobs:
                 fi
               fi
               
-              # 🔍 核心防禦：在日誌中列印出程式碼的真實修改差異，防止盲目原地空轉
               echo "=== 📝 目前原始碼變更狀態 (Git Diff) ==="
               git diff "$TARGET_KT" || true
               echo "========================================"
@@ -201,11 +200,11 @@ jobs:
           fi
           
           ATTEMPT=$((ATTEMPT+1))
-          sleep 3 # 稍微緩衝，避免請求頻率過高
+          sleep 3
         done
 
         if [ "$BUILD_SUCCESS" = false ]; then
-          echo "❌ 已達到最大嘗試次數 $MAX_ATTEMPTS 次，編譯依然失敗。"
+          echo "❌ 已達到最大嘗試次數 $MAX_ATTEMPTS 次，編編譯依然失敗。"
           exit 1
         fi
 
@@ -216,6 +215,7 @@ jobs:
         find . -name "*.apk"
         echo "========================================"
 
+    # 🛑 關鍵修正：加上 [skip ci] 避免推送成功後再度觸發重新編譯
     - name: Auto Commit Gemini Fix (Only on Success)
       if: success()
       env:
@@ -225,7 +225,7 @@ jobs:
         git config --global user.email "gemini-bot@github.com"
         git remote set-url origin https://x-access-token:${PERSONAL_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
         git add .
-        git commit -m "🤖 Gemini AI 全自動自我修復成功，更新正確原始碼" || exit 0
+        git commit -m "🤖 Gemini AI 全自動自我修復成功 [skip ci]" || exit 0
         git push --force
 
     - name: Upload APK Artifact
