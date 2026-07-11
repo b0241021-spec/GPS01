@@ -40,6 +40,7 @@ jobs:
         android.enableJetifier=true
         EOF
         
+        # 補齊所有 mipmap 圖示
         for dir in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
           mkdir -p app/src/main/res/$dir
           cat << 'EOF' > app/src/main/res/$dir/ic_launcher.png
@@ -47,6 +48,35 @@ jobs:
         EOF
           cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_round.png
         done
+
+    - name: Hard Fix Kotlin Files Structure
+      working-directory: ./gps-simulator-android
+      run: |
+        TARGET_KT="app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
+        SERVICE_KT="app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt"
+        
+        echo "=== 🛠️ 開始強力清洗並重組 Kotlin 程式碼 ==="
+        
+        # 1. 清洗 MainActivity.kt：移除前面被 AI 亂插在 package 之前的 import
+        if [ -f "$TARGET_KT" ]; then
+          # 找出真正的 package 那一行，並丟棄它之前的所有內容
+          sed -i -n '/package com.gpssimulator/,$p' "$TARGET_KT"
+          
+          # 在 package 下方精準插入正確、不重複的常用 import 聲明
+          sed -i '/package com.gpssimulator.ui/a \\nimport androidx.core.content.ContextCompat\nimport com.gpssimulator.data.SimulationState\nimport com.gpssimulator.service.GPSSimulationService' "$TARGET_KT"
+          
+          # 修正 Kotlin Flow 收集器的老舊語法衝突
+          sed -i "s/collect\s*{\s*$/collect { state ->/g" "$TARGET_KT" || true
+          sed -i "s/collect\s*{\s*it\s*->/collect { state ->/g" "$TARGET_KT" || true
+        fi
+        
+        # 2. 清洗 GPSSimulationService.kt：確保 R 套件與 ContextCompat 正常匯入
+        if [ -f "$SERVICE_KT" ]; then
+          sed -i -n '/package com.gpssimulator/,$p' "$SERVICE_KT"
+          sed -i '/package com.gpssimulator.service/a \\nimport androidx.core.content.ContextCompat\nimport com.gpssimulator.R' "$SERVICE_KT"
+        fi
+        
+        echo "=== 📝 清洗完成 ==="
 
     - name: Prepare Executable
       working-directory: ./gps-simulator-android
@@ -58,131 +88,19 @@ jobs:
           chmod +x gradlew
         fi
 
-    # 👑 終極校正：確保所有 log 擷取與 AI 修正都在同一個資料夾 (gps-simulator-android) 內進行
-    - name: Build and Auto-Heal Loop with Gemini
-      env:
-        GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
-        API_URL: "https://generativelanguage.googleapis.com/v1beta/models"
+    # 直接送去編譯，不再交給 AI 瞎指揮
+    - name: Direct Build Verification
+      working-directory: ./gps-simulator-android
       run: |
-        cd gps-simulator-android
-        MAX_ATTEMPTS=100
-        ATTEMPT=1
-        BUILD_SUCCESS=false
-
-        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-          echo "========================================"
-          echo "  🚀 開始第 $ATTEMPT 次嘗試編譯 APK..."
-          echo "========================================"
-          
-          # 加上 --info 確保 log 夠詳細
-          if ./gradlew assembleDebug --no-daemon --info > build.log 2>&1; then
-            echo "✅ 恭喜！第 $ATTEMPT 次編譯成功！"
-            BUILD_SUCCESS=true
-            break
-          else
-            echo "❌ 第 $ATTEMPT 次編譯失敗。正在擷取錯誤日誌..."
-            # 💡 修正 1：直接過濾 Kotlin 錯誤和前後 40 行，讓 AI 精準咬住錯誤
-            grep -B 10 -A 30 "Unresolved reference" build.log > error.log || tail -n 80 build.log > error.log
-            
-            echo "--- 餵給 AI 的錯誤片段 ---"
-            cat error.log
-            echo "--------------------------"
-            
-            MODELS=("gemini-3.5-flash" "gemini-3.1-flash-lite" "gemini-2.5-flash")
-            RESPONSE=""
-            SUCCESSFUL_MODEL=""
-
-            for MODEL in "${MODELS[@]}"; do
-              echo "📡 嘗試調用模型：$MODEL"
-              RETRY_COUNT=1
-              MAX_RETRIES=3
-              BACKOFF=5
-
-              while [ $RETRY_COUNT -le $MAX_RETRIES ]; do
-                echo "   👉 向 $MODEL 發送請求 (嘗試第 $RETRY_COUNT/$MAX_RETRIES 次)..."
-                
-                PAYLOAD=$(jq -n --rawfile log error.log --arg m "$MODEL" '{
-                  contents: [{
-                    parts: [{
-                      text: ("你是一個資深 Android 專家，目前專案編譯發生以下錯誤：\n" + $log + "\n\n請給出一段精準的 Linux sed 命令幫我修復這個檔案。注意當前工作目錄為專案根目錄。")
-                    }]
-                  }],
-                  generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                      type: "OBJECT",
-                      properties: {
-                        explanation: {
-                          type: "STRING",
-                          description: "簡短解釋錯誤原因以及如何修正"
-                        },
-                        patch_command: {
-                          type: "STRING",
-                          description: "精準的單行 Linux sed 指令來修正專案，例如: sed -i \"s/old/new/g\" app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
-                        }
-                      },
-                      required: ["patch_command"]
-                    }
-                  }
-                }')
-
-                RESPONSE=$(curl -s -X POST "${API_URL}/${MODEL}:generateContent?key=${GEMINI_KEY}" \
-                  -H "Content-Type: application/json" \
-                  -d "$PAYLOAD")
-
-                API_ERROR=$(echo "$RESPONSE" | jq -r '.error.message' 2>/dev/null)
-                API_CODE=$(echo "$RESPONSE" | jq -r '.error.code' 2>/dev/null)
-
-                if [ ! -z "$API_ERROR" ] && [ "$API_ERROR" != "null" ]; then
-                  echo "   ⚠️ API 回傳錯誤 ($API_CODE): $API_ERROR"
-                  if [ "$API_CODE" = "503" ] || [ "$API_CODE" = "429" ]; then
-                    echo "   ⏳ 伺服器忙碌中，等待 $BACKOFF 秒後進行退避重試..."
-                    sleep $BACKOFF
-                    BACKOFF=$((BACKOFF * 2))
-                    RETRY_COUNT=$((RETRY_COUNT + 1))
-                  else
-                    break 2
-                  fi
-                else
-                  SUCCESSFUL_MODEL=$MODEL
-                  break 2
-                fi
-              done
-            done
-
-            RAW_CONTENT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' 2>/dev/null)
-            
-            if [ -z "$RAW_CONTENT" ] || [ "$RAW_CONTENT" = "null" ]; then
-              echo "⚠️ 無化解析模型回傳內容。"
-              PATCH_COMMAND="null"
-            else
-              CLEANED_CONTENT=$(echo "$RAW_CONTENT" | sed 's/```json//g; s/```//g')
-              EXPLANATION=$(echo "$CLEANED_CONTENT" | jq -r '.explanation' 2>/dev/null)
-              PATCH_COMMAND=$(echo "$CLEANED_CONTENT" | jq -r '.patch_command' 2>/dev/null)
-              echo "💡 Gemini 分析: $EXPLANATION"
-              echo "⚙️ 預期執行指令: $PATCH_COMMAND"
-            fi
-            
-            if [ ! -z "$PATCH_COMMAND" ] && [ "$PATCH_COMMAND" != "null" ]; then
-              echo "執行 AI Patch..."
-              eval "$PATCH_COMMAND" || true
-            fi
-          fi
-          
-          ATTEMPT=$((ATTEMPT+1))
-          sleep 3
-        done
-
-        if [ "$BUILD_SUCCESS" = false ]; then
-          exit 1
-        fi
+        echo "🚀 執行最終編譯..."
+        ./gradlew assembleDebug --no-daemon
 
     - name: Verify APK Location
       if: success()
       run: |
         find . -name "*.apk"
 
-    - name: Auto Commit Gemini Fix (Only on Success)
+    - name: Auto Commit Fix (Only on Success)
       if: success()
       env:
         PERSONAL_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -191,7 +109,7 @@ jobs:
         git config --global user.email "gemini-bot@github.com"
         git remote set-url origin https://x-access-token:${PERSONAL_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
         git add .
-        git commit -m "🤖 Gemini AI 全自動自我修復成功 [skip ci]" || exit 0
+        git commit -m "🤖 結構預修復成功並完成編譯 [skip ci]" || exit 0
         git push --force
 
     - name: Upload APK Artifact
