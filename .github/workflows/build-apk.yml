@@ -20,32 +20,40 @@ jobs:
       run: |
         find . -name "*.zip" -exec unzip -o {} \;
 
-    # 3. 設定 Java 11 (相容舊版 DataBinding 插件)
-    - name: Set up JDK 11
+    # 3. 強制升級專案中的 Android Gradle 插件版本 (解決舊版 DataBinding 與新環境衝突)
+    - name: Upgrade Android Gradle Plugin Version
+      working-directory: ./gps-simulator-android
+      run: |
+        # 自動將 build.gradle 中的 com.android.tools.build:gradle 版本強制替換為 8.1.0
+        sed -i 's/com.android.tools.build:gradle:[^"]*/com.android.tools.build:gradle:8.1.0/g' build.gradle || true
+        sed -i "s/com.android.tools.build:gradle:[^']*/com.android.tools.build:gradle:8.1.0/g" build.gradle || true
+
+    # 4. 設定現代化 Java 17 環境
+    - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: '11'
+        java-version: '17'
 
-    # 4. 安裝並建立 Gradle Wrapper 7.5 (支援舊 API 的最後幾個版本之一)
+    # 5. 下載並建立現代化 Gradle Wrapper (8.2 版本)
     - name: Install and Generate Gradle Wrapper
       working-directory: ./gps-simulator-android
       run: |
-        wget https://services.gradle.org/distributions/gradle-7.5-bin.zip
-        unzip -q gradle-7.5-bin.zip
-        ./gradle-7.5/bin/gradle wrapper --gradle-version 7.5
+        wget https://services.gradle.org/distributions/gradle-8.2-bin.zip
+        unzip -q gradle-8.2-bin.zip
+        ./gradle-8.2/bin/gradle wrapper --gradle-version 8.2
 
-    # 5. 給予 gradlew 執行權限
+    # 6. 給予 gradlew 執行權限
     - name: Grant execute permission for gradlew
       working-directory: ./gps-simulator-android
       run: chmod +x gradlew
 
-    # 6. 編譯不需要金鑰的 Debug APK
+    # 7. 編譯 Debug APK (加上 --info 確保萬一失敗有完整日誌)
     - name: Build with Gradle
       working-directory: ./gps-simulator-android
-      run: ./gradlew assembleDebug
+      run: ./gradlew assembleDebug --info
 
-    # 7. 蒐集產出的 APK 並上傳
+    # 8. 蒐集產出的 APK 並上傳
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
