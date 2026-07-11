@@ -19,7 +19,7 @@ jobs:
     # ⚠️ 請把下方的 您的檔案名稱.zip 改成你實際上傳的檔名（區分大小寫）
     - name: Unzip project files
       run: |
-        unzip GPS test.zip
+        unzip GPStest.zip
         ls -la # 列出解壓後的檔案，方便從日誌檢查路徑是否正確
 
     # 3. 設定 Java 環境
