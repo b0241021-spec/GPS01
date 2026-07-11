@@ -48,6 +48,20 @@ jobs:
           cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_round.png
         done
 
+    # 👑 核心修正：不管是根目錄還是子目錄，通通強制生成並賦予執行權限
+    - name: Prepare Executable (Dual-Zone Insurance)
+      run: |
+        echo "=== 🛡️ 開始建立全域 Gradle 執行檔 ==="
+        # 1. 在最外層根目錄建立
+        gradle wrapper --gradle-version 7.5
+        chmod +x gradlew || true
+        
+        # 2. 在專案子目錄建立
+        cd gps-simulator-android
+        gradle wrapper --gradle-version 7.5
+        chmod +x gradlew || true
+        echo "=== 🛡️ 執行檔建立完畢 ==="
+
     - name: Build and Safe-Heal Loop with Gemini
       env:
         GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -63,7 +77,7 @@ jobs:
           echo "  🚀 開始第 $ATTEMPT 次嘗試編譯 APK..."
           echo "========================================"
           
-          # 每次編譯前，先進行結構保底清洗，確保 package 永遠在第一行
+          # 每次編譯前，先進行結構保底清洗
           TARGET_KT="app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
           SERVICE_KT="app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt"
           
@@ -76,14 +90,20 @@ jobs:
             sed -i '/package com.gpssimulator.service/a \\nimport androidx.core.content.ContextCompat\nimport com.gpssimulator.R' "$SERVICE_KT" || true
           fi
 
-          # 執行編譯並捕捉詳細錯誤
+          # 雙重確認當前目錄下真的有 gradlew 存在
+          if [ ! -f "./gradlew" ]; then
+            echo "⚠️ 警告：./gradlew 遺失，正在原地重新補件..."
+            gradle wrapper --gradle-version 7.5
+            chmod +x gradlew
+          fi
+
+          # 執行編譯
           if ./gradlew assembleDebug --no-daemon > build.log 2>&1; then
             echo "✅ 恭喜！第 $ATTEMPT 次編譯成功！"
             BUILD_SUCCESS=true
             break
           else
             echo "❌ 第 $ATTEMPT 次編譯失敗。正在擷取錯誤日誌..."
-            # 擷取關鍵錯誤
             grep -B 3 -A 10 "e: " build.log > error.log || tail -n 50 build.log > error.log
             
             echo "--- 餵給 AI 的錯誤核心 ---"
@@ -92,7 +112,6 @@ jobs:
             
             MODELS=("gemini-3.5-flash" "gemini-3.1-flash-lite")
             RESPONSE=""
-            SUCCESSFUL_MODEL=""
 
             for MODEL in "${MODELS[@]}"; do
               PAYLOAD=$(jq -n --rawfile log error.log '{
@@ -117,8 +136,6 @@ jobs:
               RESPONSE=$(curl -s -X POST "${API_URL}/${MODEL}:generateContent?key=${GEMINI_KEY}" \
                 -H "Content-Type: application/json" \
                 -d "$PAYLOAD")
-
-              SUCCESSFUL_MODEL=$MODEL
               break
             done
 
