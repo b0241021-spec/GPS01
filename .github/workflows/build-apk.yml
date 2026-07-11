@@ -20,27 +20,27 @@ jobs:
       run: |
         find . -name "*.zip" -exec unzip -o {} \;
 
-    # 3. 設定現代化 Java 17 環境
-    - name: Set up JDK 17
+    # 3. 設定 Java 11 (相容舊版 DataBinding 插件)
+    - name: Set up JDK 11
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: '17'
+        java-version: '11'
 
-    # 4. 下載並建立現代化 Gradle Wrapper (8.2 版本)
+    # 4. 安裝並建立 Gradle Wrapper 7.5 (支援舊 API 的最後幾個版本之一)
     - name: Install and Generate Gradle Wrapper
       working-directory: ./gps-simulator-android
       run: |
-        wget https://services.gradle.org/distributions/gradle-8.2-bin.zip
-        unzip -q gradle-8.2-bin.zip
-        ./gradle-8.2/bin/gradle wrapper --gradle-version 8.2
+        wget https://services.gradle.org/distributions/gradle-7.5-bin.zip
+        unzip -q gradle-7.5-bin.zip
+        ./gradle-7.5/bin/gradle wrapper --gradle-version 7.5
 
     # 5. 給予 gradlew 執行權限
     - name: Grant execute permission for gradlew
       working-directory: ./gps-simulator-android
       run: chmod +x gradlew
 
-    # 6. 改用編譯 Debug APK (不需要配置簽名金鑰，成功率最高)
+    # 6. 編譯不需要金鑰的 Debug APK
     - name: Build with Gradle
       working-directory: ./gps-simulator-android
       run: ./gradlew assembleDebug
@@ -52,4 +52,3 @@ jobs:
         name: debug-apk
         path: |
           gps-simulator-android/app/build/outputs/apk/debug/*.apk
-          gps-simulator-android/app/build/outputs/apk/release/*.apk
