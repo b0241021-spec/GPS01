@@ -33,7 +33,7 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 步驟一：全專案結構淨化與重構（附帶 AI 自我修復） ====================
+    # ==================== 步驟一：全專案結構淨化與重構（100% 移除干擾註解） ====================
     - name: Step 1 - Hard Purge & Reset Project Structure
       env:
         GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -47,44 +47,30 @@ jobs:
         while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
           echo "=== 🧹 開始第 $ATTEMPT 次嘗試：全專案大淨化 ==="
           
-          # 用獨立腳本執行重構，以便捕捉可能發生的 Linux 命令錯誤
+          # 直接使用標準的寫入方式，完全不使用 INNER 包裹，杜絕語法衝突
           cat << 'EOF' > run_purge.sh
           set -e
-          # 1. 建立 settings.gradle
-          cat << 'INNER' > settings.gradle
-          pluginManagement { repositories { gradlePluginPortal(); google(); mavenCentral() } }
-          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
-          rootProject.name = "GPSSimulator"
-          include ':app'
-          INNER
+          
+          // 1. 建立 settings.gradle
+          echo "pluginManagement { repositories { gradlePluginPortal(); google(); mavenCentral() } }" > settings.gradle
+          echo "dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }" >> settings.gradle
+          echo "rootProject.name = 'GPSSimulator'" >> settings.gradle
+          echo "include ':app'" >> settings.gradle
 
-          # 2. 建立 gradle.properties
-          echo "android.useAndroidX=true\nandroid.enableJetifier=true" > gradle.properties
+          // 2. 建立 gradle.properties
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
 
-          # 3. 建立最穩固的 app/build.gradle
+          // 3. 建立 app/build.gradle
           mkdir -p app
-          cat << 'INNER' > app/build.gradle
-          plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
-          android {
-              namespace 'com.gpssimulator'
-              compileSdk 33
-              defaultConfig { applicationId "com.gpssimulator"; minSdk 24; targetSdk 33; versionCode 1; versionName "1.0" }
-              buildTypes { release { minifyEnabled false } }
-              compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }
-              kotlinOptions { jvmTarget = '11' }
-          }
-          dependencies {
-              implementation 'androidx.core:core-ktx:1.9.0'
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'com.google.android.material:material:1.8.0'
-          }
-          INNER
+          echo "plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }" > app/build.gradle
+          echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }; kotlinOptions { jvmTarget = '11' } }" >> app/build.gradle
+          echo "dependencies { implementation 'androidx.core:core-ktx:1.9.0'; implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.8.0' }" >> app/build.gradle
 
-          # 4. 清理並重新建立極簡資源目錄 (修正了先前的路徑錯誤)
+          // 4. 清理並重製資原始目錄
           rm -rf app/src/main/res/layout/* || true
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/mipmap-hdpi app/src/main/res/mipmap-mdpi app/src/main/res/mipmap-xhdpi app/src/main/res/mipmap-xxhdpi app/src/main/res/mipmap-xxxhdpi
-          
           echo '<resources><string name="app_name">GPS Simulator</string></resources>' > app/src/main/res/values/strings.xml
 
           for dir in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
@@ -92,26 +78,11 @@ jobs:
             cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_round.png || true
           done
 
-          # 5. 精準路徑寫入 AndroidManifest.xml
+          // 5. 建立 AndroidManifest.xml
           mkdir -p app/src/main
-          cat << 'INNER' > app/src/main/AndroidManifest.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-              <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-              <application android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:label="@string/app_name" android:roundIcon="@mipmap/ic_launcher_round" android:theme="@style/Theme.AppCompat.Light.NoActionBar">
-                  <activity android:name=".ui.MainActivity" android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-                  </activity>
-                  <service android:name=".service.GPSSimulationService" android:exported="false" />
-              </application>
-          </manifest>
-          INNER
+          echo '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /><application android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:label="@string/app_name" android:roundIcon="@mipmap/ic_launcher_round" android:theme="@style/Theme.AppCompat.Light.NoActionBar"><activity android:name=".ui.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity><service android:name=".service.GPSSimulationService" android:exported="false" /></application></manifest>' > app/src/main/AndroidManifest.xml
 
-          # 6. 重新寫入純淨的代碼骨架
+          // 6. 重新注入 Kotlin 純淨代碼骨架
           mkdir -p app/src/main/java/com/gpssimulator/ui app/src/main/java/com/gpssimulator/service app/src/main/java/com/gpssimulator/data
           echo "package com.gpssimulator.data\ndata class SimulationState(val isRunning: Boolean = false, val currentSpeed: Double = 0.0, val latitude: Double = 0.0, val longitude: Double = 0.0, val progress: Int = 0, val speedMultiplier: Float = 1.0f, val statusText: String = \"\", val currentLocation: String = \"0.0, 0.0\", val direction: Float = 0.0f, val speed: Double = 0.0, val isSimulating: Boolean = false, val isMoving: Boolean = false, val statusMessage: String = \"\")" > app/src/main/java/com/gpssimulator/data/SimulationState.kt
           echo "package com.gpssimulator.service\nimport android.app.Service\nimport android.content.Intent\nimport android.os.IBinder\nclass GPSSimulationService : Service() { override fun onBind(intent: Intent?): IBinder? = null }" > app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt
