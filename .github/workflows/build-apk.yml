@@ -43,7 +43,7 @@ jobs:
         rm -rf .gradle build app/build || true
         rm -rf src/main/java || true
 
-        # 👑 關鍵診斷修復一：刪除與原廠 GPSSimulatorState 撞名的 SimulationState.kt 殘渣
+        # 關鍵診斷修復一：刪除與原廠 GPSSimulatorState 撞名的 SimulationState.kt 殘渣
         rm -f app/src/main/java/com/gpssimulator/data/SimulationState.kt || true
 
         # 2. 重新配置根目錄環境
@@ -66,7 +66,7 @@ jobs:
           cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_foreground.png || true
         done
 
-        # 👑 關鍵診斷修復二：大補帖式注入原廠功能所需的 Coroutines 與 Lifecycle KTX 依賴庫
+        # 關鍵診斷修復二：大補帖式注入原廠功能所需的 Coroutines 與 Lifecycle KTX 依賴庫
         rm -f app/build.gradle || true
         echo "plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }" > app/build.gradle
         echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }; kotlinOptions { jvmTarget = '11' } }" >> app/build.gradle
@@ -77,7 +77,7 @@ jobs:
             implementation 'androidx.appcompat:appcompat:1.6.1'
             implementation 'com.google.android.material:material:1.8.0'
             
-            // 🚀 原廠代碼核心依賴：解決 lifecycleScope 與 協程編譯報錯
+            // 原廠代碼核心依賴：解決 lifecycleScope 與 協程編譯報錯
             implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
             implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
             implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
@@ -159,7 +159,7 @@ jobs:
 
     - name: Upload APK Artifact
       if: success()
-      uses: upload-artifact@v4
+      uses: actions/upload-artifact@v4
       with:
         name: Manus-GPS-Successful-APK
         path: "**/build/outputs/apk/debug/*.apk"
