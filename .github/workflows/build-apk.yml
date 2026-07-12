@@ -33,8 +33,8 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 步驟一：分析原廠 XML 並精準動態注入業務邏輯 ====================
-    - name: Step 1 - XML Probe & Precision Business Logic Injector
+    # ==================== 步驟一：修復 Kotlin 註解與 Data Class 欄位 ====================
+    - name: Step 1 - Fix Kotlin Comments & Data Class Fields
       run: |
         cd gps-simulator-android
         set -e
@@ -46,21 +46,11 @@ jobs:
         mkdir -p app/src/main/java/com/gpssimulator/service
         mkdir -p app/src/main/java/com/gpssimulator/ui
 
-        # 👑 1. 自動探針：打印出原廠 XML 內所有的 ID，方便對齊，並用 Python 抓取關鍵 ID
-        echo "=== 🔎 原廠 XML 佈局 ID 探針掃描開始 ==="
-        XML_FILE=$(find app/src/main/res/layout -name "activity_main.xml" | head -n 1)
-        if [ -f "$XML_FILE" ]; then
-          grep -o 'android:id="@[+]id/[^"]*"' "$XML_FILE" || true
-        else
-          echo "錯誤：找不到原廠 activity_main.xml！" && exit 1
-        fi
-        echo "=== 🔎 探針掃描結束 ==="
-
-        # 👑 2. 注入滿血版 Data Class (支持速度、方向、模擬開關狀態、當前定位)
+        # 👑 1. 修正註解後的標準 Data Class
         cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/data/SimulationState.kt
         package com.gpssimulator.data
         data class SimulationState(
-            val latitude: Double = 25.0330,  # 預設台北經緯度
+            val latitude: Double = 25.0330,
             val longitude: Double = 121.5654,
             val currentLatitude: Double = 25.0330,
             val currentLongitude: Double = 121.5654,
@@ -71,7 +61,7 @@ jobs:
         )
         KOTLIN
 
-        # 👑 3. 注入具備完整模擬與 Disable 功能的 Service
+        # 👑 2. 注入 Service 邏輯
         cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt
         package com.gpssimulator.service
 
@@ -135,7 +125,6 @@ jobs:
                 job = CoroutineScope(Dispatchers.Main).launch {
                     while (isActive && _uiState.value.isSimulating) {
                         val state = _uiState.value
-                        // 模擬真實定位隨速度與方向微幅更新 (經緯度小數點變更邏輯)
                         val r = 6378137.0
                         val dn = (state.speed * (1000f / 3600f)) * Math.cos(Math.toRadians(state.direction.toDouble()))
                         val de = (state.speed * (1000f / 3600f)) * Math.sin(Math.toRadians(state.direction.toDouble()))
@@ -147,7 +136,6 @@ jobs:
                         
                         _uiState.value = _uiState.value.copy(currentLatitude = newLat, currentLongitude = newLng)
                         
-                        // 嘗試發送 Mock Location 到系統
                         try {
                             val locMgr = getSystemService(Context.LOCATION_SERVICE) as LocationManager
                             val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
@@ -175,7 +163,7 @@ jobs:
         }
         KOTLIN
 
-        # 👑 4. 注入聰明對接的 MainActivity (完美修復 5 大使用錯誤)
+        # 👑 3. 注入對接的 MainActivity
         cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/ui/MainActivity.kt
         package com.gpssimulator.ui
 
@@ -195,7 +183,6 @@ jobs:
             private var service: GPSSimulationService? = null
             private var isBound = false
 
-            // 全域動態對接控制項
             private var etLat: EditText? = null
             private var etLng: EditText? = null
             private var tvCurrentGps: TextView? = null
@@ -203,22 +190,18 @@ jobs:
             private var sbDirection: SeekBar? = null
             private var tvSpeedVal: TextView? = null
             private var tvDirVal: TextView? = null
-            private var swSimulate: CheckBox? = null // 相容 Switch, Toggle, CheckBox
-            private var btnTest: Button? = null
 
             override fun onCreate(savedInstanceState: Bundle?) {
                 super.onCreate(savedInstanceState)
                 val layoutId = resources.getIdentifier("activity_main", "layout", packageName)
                 if (layoutId != 0) setContentView(layoutId)
 
-                // 權限要求
                 val reqs = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) reqs.add(Manifest.permission.POST_NOTIFICATIONS)
                 if (reqs.any { ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }) {
                     ActivityCompat.requestPermissions(this, reqs.toTypedArray(), 101)
                 }
 
-                // 👑 【精準對接】智慧掃描原廠的所有變數 ID
                 etLat = findViewByNames("et_latitude", "etLatitude", "latitude_input", "lat")
                 etLng = findViewByNames("et_longitude", "etLongitude", "longitude_input", "lng")
                 tvCurrentGps = findViewByNames("tv_current_location", "currentLocationText", "tvCurrentGps", "location_display", "gps_status")
@@ -227,11 +210,9 @@ jobs:
                 tvSpeedVal = findViewByNames("tv_speed_value", "speedValue", "speed_text")
                 tvDirVal = findViewByNames("tv_direction_value", "directionValue", "direction_text")
                 
-                // 模擬開關與測試按鈕對接
                 val swView = findViewByNames<android.view.View>("switch_simulate", "simulateSwitch", "btn_simulate", "toggle_simulate", "mock_switch")
                 val btnTestView = findViewByNames<android.view.View>("btn_start_test", "startTestButton", "btn_test", "test_button", "start_test")
 
-                // 1. 滑塊動態監聽 (速度與方向)
                 val seekListener = object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) { syncParamsFromUi() }
                     override fun onStartTrackingTouch(s: SeekBar?) {}
@@ -240,7 +221,6 @@ jobs:
                 sbSpeed?.setOnSeekBarChangeListener(seekListener)
                 sbDirection?.setOnSeekBarChangeListener(seekListener)
 
-                // 2. 模擬開關事件
                 if (swView is CompoundButton) {
                     swView.setOnCheckedChangeListener { _, isChecked -> service?.toggleSimulation(isChecked) }
                 } else {
@@ -250,12 +230,10 @@ jobs:
                     }
                 }
 
-                // 3. 開始測試按鈕事件與 Disable 狀態實作
                 btnTestView?.setOnClickListener {
                     val currentStatus = service?.uiState?.value?.isTestRunning ?: false
                     service?.toggleTest(!currentStatus)
                     
-                    // 當處於測試中，實作 Disable 功能 (鎖定輸入框與滑塊防呆)
                     val nextStatus = !currentStatus
                     etLat?.isEnabled = !nextStatus
                     etLng?.isEnabled = !nextStatus
@@ -266,7 +244,6 @@ jobs:
                     }
                 }
 
-                // 綁定背景服務
                 val intent = Intent(this, GPSSimulationService::class.java)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
                 bindService(intent, connection, Context.BIND_AUTO_CREATE)
@@ -295,7 +272,6 @@ jobs:
             private fun observeState() {
                 lifecycleScope.launch {
                     service?.uiState?.collect { state ->
-                        // 修正問題 4 & 2：用正確的經緯度格式(小數點)更新當前 GPS 位置顯示
                         val gpsFormattedText = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
                         tvCurrentGps?.text = gpsFormattedText
                     }
@@ -317,8 +293,23 @@ jobs:
         }
         KOTLIN
 
-        # 5. 配置全域符合的倉庫鏡像
-        rm -f build.gradle settings.gradle app/build.gradle || true
+        # 4. 配置 Manifest、鏡像與 Gradle 構建腳本
+        rm -f build.gradle settings.gradle app/build.gradle app/src/main/AndroidManifest.xml || true
+        
+        cat << 'XML' > app/src/main/AndroidManifest.xml
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.gpssimulator">
+            <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+            <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+            <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION" />
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+            <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+            <application android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:label="GPS Simulator" android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
+                <activity android:name=".ui.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity>
+                <service android:name=".service.GPSSimulationService" android:enabled="true" android:exported="false" android:foregroundServiceType="location" />
+            </application>
+        </manifest>
+        XML
+
         echo "plugins { id 'com.android.application' version '7.3.1' apply false; id 'org.jetbrains.kotlin.android' version '1.7.20' apply false }" > build.gradle
         cat << 'GRADLE' > settings.gradle
         pluginManagement { repositories { maven { url 'https://maven.aliyun.com/repository/public' }; maven { url 'https://maven.aliyun.com/repository/google' }; gradlePluginPortal(); google(); mavenCentral() } }
@@ -329,14 +320,14 @@ jobs:
         echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; buildFeatures { viewBinding true; dataBinding true }; compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }; kotlinOptions { jvmTarget = '11' } }" >> app/build.gradle
         echo "dependencies { implementation 'androidx.core:core-ktx:1.9.0'; implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.8.0'; implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'; implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'; implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1' }" >> app/build.gradle
 
-    # ==================== 步驟二：建置環境 ====================
+    # ==================== 步驟二：環境建置 ====================
     - name: Step 2 - Prepare Executable
       working-directory: ./gps-simulator-android
       run: |
         gradle wrapper --gradle-version 7.5
         chmod +x gradlew
 
-    # ==================== 步驟三：自動編譯出貨 ====================
+    # ==================== 步驟三：直接編譯出貨 ====================
     - name: Step 3 - Final Compile Production APK
       working-directory: ./gps-simulator-android
       run: |
@@ -351,7 +342,7 @@ jobs:
         git config --global user.email "gemini-bot@github.com"
         git remote set-url origin https://x-access-token:${PERSONAL_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
         git add .
-        git commit -m "🤖 5大功能Bug滿血全修版 APK 出貨！ [skip ci]" || exit 0
+        git commit -m "🤖 滿血修正語法錯誤版 APK 出貨！ [skip ci]" || exit 0
         git push --force
 
     - name: Upload APK Artifact
