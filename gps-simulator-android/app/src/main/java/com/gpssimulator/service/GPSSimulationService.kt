@@ -19,29 +19,25 @@ class GPSSimulationService : Service() {
     inner class LocalBinder : Binder() {
         fun getService(): GPSSimulationService = this@GPSSimulationService
     }
-
     private val binder = LocalBinder()
     override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel("gps_service", "GPS Simulation", NotificationManager.IMPORTANCE_LOW)
+            val manager = getSystemService(NotificationManager::class.java)
+            manager?.createNotificationChannel(channel)
+        }
         val notification = NotificationCompat.Builder(this, "gps_service")
-            .setContentTitle("GPS Simulator Running")
+            .setContentTitle("GPS Simulator")
+            .setContentText("服務運作中...")
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .build()
         startForeground(1, notification)
     }
 
     fun setTargetLocation(lat: Double, lng: Double) {
-        _uiState.value = _uiState.value.copy(latitude = lat, longitude = lng)
-    }
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel("gps_service", "GPS Simulation", NotificationManager.IMPORTANCE_LOW)
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
-        }
+        _uiState.value = SimulationState(lat, lng)
     }
 }

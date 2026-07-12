@@ -1,78 +1,78 @@
 [
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/layout_activity_main.xml.flat",
-        "source": "com.gpssimulator.app-main-35:/layout/activity_main.xml"
+        "merged": "com.gpssimulator.app-merged_res-30:/mipmap-mdpi_ic_launcher_foreground.png.flat",
+        "source": "com.gpssimulator.app-main-32:/mipmap-mdpi/ic_launcher_foreground.png"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/mipmap-hdpi_ic_launcher_round.png.flat",
-        "source": "com.gpssimulator.app-main-35:/mipmap-hdpi/ic_launcher_round.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "com.gpssimulator.app-main-32:/mipmap-xhdpi/ic_launcher_round.png"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/mipmap-mdpi_ic_launcher.png.flat",
-        "source": "com.gpssimulator.app-main-35:/mipmap-mdpi/ic_launcher.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "com.gpssimulator.app-main-32:/mipmap-mdpi/ic_launcher.png"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/mipmap-hdpi_ic_launcher.png.flat",
-        "source": "com.gpssimulator.app-main-35:/mipmap-hdpi/ic_launcher.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/layout_activity_main.xml.flat",
+        "source": "com.gpssimulator.app-main-32:/layout/activity_main.xml"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/mipmap-xhdpi_ic_launcher_round.png.flat",
-        "source": "com.gpssimulator.app-main-35:/mipmap-xhdpi/ic_launcher_round.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "com.gpssimulator.app-main-32:/mipmap-mdpi/ic_launcher_round.png"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/mipmap-xxhdpi_ic_launcher_foreground.png.flat",
-        "source": "com.gpssimulator.app-main-35:/mipmap-xxhdpi/ic_launcher_foreground.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "com.gpssimulator.app-main-32:/mipmap-xhdpi/ic_launcher.png"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/mipmap-xxxhdpi_ic_launcher.png.flat",
-        "source": "com.gpssimulator.app-main-35:/mipmap-xxxhdpi/ic_launcher.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/mipmap-hdpi_ic_launcher_foreground.png.flat",
+        "source": "com.gpssimulator.app-main-32:/mipmap-hdpi/ic_launcher_foreground.png"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
-        "source": "com.gpssimulator.app-main-35:/mipmap-xxxhdpi/ic_launcher_foreground.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "com.gpssimulator.app-main-32:/mipmap-hdpi/ic_launcher.png"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/mipmap-xhdpi_ic_launcher_foreground.png.flat",
-        "source": "com.gpssimulator.app-main-35:/mipmap-xhdpi/ic_launcher_foreground.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.gpssimulator.app-main-32:/mipmap-xxxhdpi/ic_launcher_foreground.png"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/drawable_reset_button_background.xml.flat",
-        "source": "com.gpssimulator.app-main-35:/drawable/reset_button_background.xml"
+        "merged": "com.gpssimulator.app-merged_res-30:/drawable_ic_launcher_foreground.png.flat",
+        "source": "com.gpssimulator.app-main-32:/drawable/ic_launcher_foreground.png"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/drawable_status_background.xml.flat",
-        "source": "com.gpssimulator.app-main-35:/drawable/status_background.xml"
+        "merged": "com.gpssimulator.app-merged_res-30:/mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "com.gpssimulator.app-main-32:/mipmap-xxhdpi/ic_launcher_round.png"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/mipmap-mdpi_ic_launcher_round.png.flat",
-        "source": "com.gpssimulator.app-main-35:/mipmap-mdpi/ic_launcher_round.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/drawable_reset_button_background.xml.flat",
+        "source": "com.gpssimulator.app-main-32:/drawable/reset_button_background.xml"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/mipmap-xxhdpi_ic_launcher_round.png.flat",
-        "source": "com.gpssimulator.app-main-35:/mipmap-xxhdpi/ic_launcher_round.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/drawable_status_background.xml.flat",
+        "source": "com.gpssimulator.app-main-32:/drawable/status_background.xml"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
-        "source": "com.gpssimulator.app-main-35:/mipmap-xxxhdpi/ic_launcher_round.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "com.gpssimulator.app-main-32:/mipmap-xxxhdpi/ic_launcher_round.png"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/drawable_ic_launcher_foreground.png.flat",
-        "source": "com.gpssimulator.app-main-35:/drawable/ic_launcher_foreground.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/mipmap-xxhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.gpssimulator.app-main-32:/mipmap-xxhdpi/ic_launcher_foreground.png"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/mipmap-xxhdpi_ic_launcher.png.flat",
-        "source": "com.gpssimulator.app-main-35:/mipmap-xxhdpi/ic_launcher.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "com.gpssimulator.app-main-32:/mipmap-hdpi/ic_launcher_round.png"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/mipmap-mdpi_ic_launcher_foreground.png.flat",
-        "source": "com.gpssimulator.app-main-35:/mipmap-mdpi/ic_launcher_foreground.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "com.gpssimulator.app-main-32:/mipmap-xxhdpi/ic_launcher.png"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/mipmap-xhdpi_ic_launcher.png.flat",
-        "source": "com.gpssimulator.app-main-35:/mipmap-xhdpi/ic_launcher.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/mipmap-xhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.gpssimulator.app-main-32:/mipmap-xhdpi/ic_launcher_foreground.png"
     },
     {
-        "merged": "com.gpssimulator.app-merged_res-33:/mipmap-hdpi_ic_launcher_foreground.png.flat",
-        "source": "com.gpssimulator.app-main-35:/mipmap-hdpi/ic_launcher_foreground.png"
+        "merged": "com.gpssimulator.app-merged_res-30:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "com.gpssimulator.app-main-32:/mipmap-xxxhdpi/ic_launcher.png"
     }
 ]
