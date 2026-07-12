@@ -33,7 +33,7 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 步驟一：全專案結構淨化與重構（無任何註解文字干擾） ====================
+    # ==================== 步驟一：全專案結構淨化與重構（徹底清理根目錄舊 build.gradle） ====================
     - name: Step 1 - Hard Purge & Reset Project Structure
       env:
         GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -47,10 +47,13 @@ jobs:
         while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
           echo "=== 🧹 開始第 $ATTEMPT 次嘗試：全專案大淨化 ==="
           
-          # 徹底移除所有包含 // 或 # 的說明文字，只留純粹的 Linux 指令
           cat << 'EOF' > run_purge.sh
           set -e
           
+          # 徹底刪除可能引發衝突的根目錄舊 build.gradle，並建立乾淨的全域配置
+          rm -f build.gradle || true
+          echo "plugins { id 'com.android.application' version '7.4.2' apply false; id 'org.jetbrains.kotlin.android' version '1.8.0' apply false }" > build.gradle
+
           echo "pluginManagement { repositories { gradlePluginPortal(); google(); mavenCentral() } }" > settings.gradle
           echo "dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }" >> settings.gradle
           echo "rootProject.name = 'GPSSimulator'" >> settings.gradle
@@ -176,7 +179,7 @@ jobs:
               generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { patch_command: { type: "STRING" } }, required: ["patch_command"] } }
             }')
             
-            RESPONSE=$(curl -s -X POST "${API_URL}/generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_KEY}" -H "Content-Type: application/json" -d "$PAYLOAD")
+            RESPONSE=$(curl -s -X POST "${API_URL}/gemini-3.5-flash:generateContent?key=${GEMINI_KEY}" -H "Content-Type: application/json" -d "$PAYLOAD")
             PATCH=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' | sed 's/```json//g; s/```//g' | jq -r '.patch_command' 2>/dev/null)
             
             if [ ! -z "$PATCH" ] && [ "$PATCH" != "null" ]; then
