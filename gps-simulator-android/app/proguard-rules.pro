@@ -1,0 +1,14 @@
+-dontusemixedcaseclassnames
+-keepattributes SourceFile,LineNumberTable
+-keep public class * extends android.app.Activity
+-keep public class * extends android.app.Service
+-keep public class * extends android.content.BroadcastReceiver
+-keep public class * extends android.content.ContentProvider
+-keep public class * extends android.app.backup.BackupAgent
+-keep public class * extends android.preference.Preference
+-keep public class * extends android.view.View
+-keep class com.google.android.gms.** { *; }
+-keep interface com.google.android.gms.** { *; }
+-keep class kotlin.** { *; }
+-keep interface kotlin.** { *; }
+-keep class kotlinx.coroutines.** { *; }
