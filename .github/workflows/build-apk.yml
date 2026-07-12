@@ -33,53 +33,96 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 步驟一：動態盲抓防禦與代碼重構 ====================
-    - name: Step 1 - Clean & Inject Bulletproof Reflection Code
+    # ==================== 步驟一：重構完整防禦代碼與清單宣告 ====================
+    - name: Step 1 - Structural Permissions & Storage Fix
       run: |
         cd gps-simulator-android
         set -e
         
-        # 1. 清理舊快取
+        # 1. 清理舊快取與殘留
         rm -rf .gradle build app/build || true
         rm -rf src/main/java || true
-        rm -f app/src/main/java/com/gpssimulator/data/SimulationState.kt || true
-        rm -f app/src/main/java/com/gpssimulator/data/GPSSimulatorState.kt || true
+        rm -f app/src/main/java/com/gpssimulator/data/* || true
 
-        # 2. 配置根目錄環境
-        rm -f build.gradle || true
-        echo "plugins { id 'com.android.application' version '7.3.1' apply false; id 'org.jetbrains.kotlin.android' version '1.7.20' apply false }" > build.gradle
-
-        echo "pluginManagement { repositories { gradlePluginPortal(); google(); mavenCentral() } }" > settings.gradle
-        echo "dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }" >> settings.gradle
-        echo "rootProject.name = 'GPSSimulator'" >> settings.gradle
-        echo "include ':app'" >> settings.gradle
-
+        # 2. 配置根目錄環境與開啟 Scoped Storage 傳統相容開關 (requestLegacyExternalStorage)
+        rm -f gradle.properties || true
         echo "android.useAndroidX=true" > gradle.properties
         echo "android.enableJetifier=true" >> gradle.properties
 
-        # 3. 補齊向量圖防禦資源圖檔
-        mkdir -p app/src/main/res/drawable
+        # 3. 👑 覆蓋清單檔案，強制宣告所有 Android 13+ 必備的定位、通知與儲存權限
+        mkdir -p app/src/main
+        cat << 'XML' > app/src/main/AndroidManifest.xml
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+            package="com.gpssimulator">
+            
+            <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+            <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+            <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION" />
+            
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+            <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+            
+            <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+            <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+            <application
+                android:allowBackup="true"
+                android:icon="@mipmap/ic_launcher"
+                android:label="GPS Simulator"
+                android:roundIcon="@mipmap/ic_launcher_round"
+                android:supportsRtl="true"
+                android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
+                android:requestLegacyExternalStorage="true">
+                
+                <activity
+                    android:name=".ui.MainActivity"
+                    android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+                
+                <service
+                    android:name=".service.GPSSimulationService"
+                    android:enabled="true"
+                    android:exported="false" />
+            </application>
+        </manifest>
+        XML
+
+        # 4. 補齊防禦資源圖檔與基礎佈局 (防禦 R.layout.activity_main)
+        mkdir -p app/src/main/res/layout app/src/main/res/values
+        echo '<resources><style name="Theme.GPSSimulator" parent="Theme.AppCompat.Light.DarkActionBar"/></resources>' > app/src/main/res/values/themes.xml
+        echo '<resources><string name="app_name">GPS Simulator</string></resources>' > app/src/main/res/values/strings.xml
+        
+        cat << 'XML' > app/src/main/res/layout/activity_main.xml
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="16dp">
+            <EditText android:id="@+id/et_latitude" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Latitude" android:inputType="numberDecimal|numberSigned"/>
+            <EditText android:id="@+id/et_longitude" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Longitude" android:inputType="numberDecimal|numberSigned"/>
+            <Button android:id="@+id/btn_apply" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Apply Location"/>
+        </LinearLayout>
+        XML
+
         for dir in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
           mkdir -p app/src/main/res/$dir
           echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > app/src/main/res/$dir/ic_launcher.png || true
           cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_round.png || true
           cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_foreground.png || true
         done
-        cp app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png app/src/main/res/drawable/ic_launcher_foreground.png || true
 
-        # 4. 重新寫入乾淨的 Data Class
+        # 5. 重新寫入乾淨的 Data Class
         mkdir -p app/src/main/java/com/gpssimulator/data
         cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/data/SimulationState.kt
         package com.gpssimulator.data
-        data class SimulationState(
-            val latitude: Double = 0.0,
-            val longitude: Double = 0.0,
-            val isSimulating: Boolean = false,
-            val speed: Float = 0f
-        )
+        data class SimulationState(val latitude: Double = 0.0, val longitude: Double = 0.0)
         KOTLIN
 
-        # 5. 重新寫入乾淨的 Service
+        # 6. 重新寫入相容的 Service
         mkdir -p app/src/main/java/com/gpssimulator/service
         cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt
         package com.gpssimulator.service
@@ -103,53 +146,52 @@ jobs:
             inner class LocalBinder : Binder() {
                 fun getService(): GPSSimulationService = this@GPSSimulationService
             }
-
             private val binder = LocalBinder()
             override fun onBind(intent: Intent?): IBinder = binder
 
             override fun onCreate() {
                 super.onCreate()
-                createNotificationChannel()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val channel = NotificationChannel("gps_service", "GPS Simulation", NotificationManager.IMPORTANCE_LOW)
+                    val manager = getSystemService(NotificationManager::class.java)
+                    manager?.createNotificationChannel(channel)
+                }
                 val notification = NotificationCompat.Builder(this, "gps_service")
-                    .setContentTitle("GPS Simulator Running")
+                    .setContentTitle("GPS Simulator")
+                    .setContentText("服務運作中...")
                     .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                     .build()
                 startForeground(1, notification)
             }
 
             fun setTargetLocation(lat: Double, lng: Double) {
-                _uiState.value = _uiState.value.copy(latitude = lat, longitude = lng)
-            }
-
-            private fun createNotificationChannel() {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    val channel = NotificationChannel("gps_service", "GPS Simulation", NotificationManager.IMPORTANCE_LOW)
-                    val manager = getSystemService(NotificationManager::class.java)
-                    manager?.createNotificationChannel(channel)
-                }
+                _uiState.value = SimulationState(lat, lng)
             }
         }
         KOTLIN
 
-        # 6. 👑 黑科技反射防禦版 MainActivity：完全停用 R.id 靜態引用，改用動態視圖遍歷（View Traversal）
+        # 7. 👑 升級防禦版 MainActivity：在啟動時自動動態要求【定位】與【通知】權限，杜絕閃退
         mkdir -p app/src/main/java/com/gpssimulator/ui
         cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/ui/MainActivity.kt
         package com.gpssimulator.ui
 
+        import android.Manifest
         import android.content.ComponentName
         import android.content.Context
         import android.content.Intent
         import android.content.ServiceConnection
+        import android.content.pm.PackageManager
+        import android.os.Build
         import android.os.Bundle
         import android.os.IBinder
         import android.text.Editable
-        import android.view.View
-        import android.view.ViewGroup
         import android.widget.Button
         import android.widget.EditText
         import androidx.appcompat.app.AlertDialog
         import androidx.appcompat.app.AppCompatActivity
+        import androidx.core.app.ActivityCompat
         import androidx.lifecycle.lifecycleScope
+        import com.gpssimulator.R
         import com.gpssimulator.service.GPSSimulationService
         import kotlinx.coroutines.launch
 
@@ -157,14 +199,13 @@ jobs:
             private var simulationService: GPSSimulationService? = null
             private var isBound = false
 
-            private var etLatitude: EditText? = null
-            private var etLongitude: EditText? = null
-            private var btnApply: Button? = null
+            private lateinit var etLatitude: EditText
+            private lateinit var etLongitude: EditText
+            private lateinit var btnApply: Button
 
             private val connection = object : ServiceConnection {
                 override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                    val binder = service as GPSSimulationService.LocalBinder
-                    simulationService = binder.getService()
+                    simulationService = (service as GPSSimulationService.LocalBinder).getService()
                     isBound = true
                     observeServiceState()
                 }
@@ -175,69 +216,52 @@ jobs:
 
             override fun onCreate(savedInstanceState: Bundle?) {
                 super.onCreate(savedInstanceState)
+                setContentView(R.layout.activity_main)
+
+                etLatitude = findViewById(R.id.et_latitude)
+                etLongitude = findViewById(R.id.et_longitude)
+                btnApply = findViewById(R.id.btn_apply)
+
+                // 👑 啟動時動態申請權限檢查，防止 Android 13 系統直接殺掉 App
+                val permissions = mutableListOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+                }
                 
-                // 動態加載佈局，避開直接寫死 R.layout 的編譯衝突
-                val layoutId = resources.getIdentifier("activity_main", "layout", packageName)
-                if (layoutId != 0) {
-                    setContentView(layoutId)
+                if (permissions.any { ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }) {
+                    ActivityCompat.requestPermissions(this, permissions.toTypedArray(), 100)
                 }
 
-                // 👑 黑科技核心：自動從整個畫面上把所有的 EditText 與 Button 撈出來
-                val rootLayout = window.decorView.findViewById<ViewGroup>(android.R.id.content)
-                val editTexts = mutableListOf<EditText>()
-                val buttons = mutableListOf<Button>()
-                
-                findAllViews(rootLayout, editTexts, buttons)
-
-                // 依序指派給對應元件 (防禦原廠配置)
-                if (editTexts.size >= 2) {
-                    etLatitude = editTexts[0]
-                    etLongitude = editTexts[1]
-                } else if (editTexts.size == 1) {
-                    etLatitude = editTexts[0]
-                }
-
-                if (buttons.isNotEmpty()) {
-                    btnApply = buttons[0]
-                }
-
-                // 設定觸發事件
-                btnApply?.setOnClickListener {
-                    val lat = etLatitude?.text?.toString()?.toDoubleOrNull() ?: 0.0
-                    val lng = etLongitude?.text?.toString()?.toDoubleOrNull() ?: 0.0
+                btnApply.setOnClickListener {
+                    val lat = etLatitude.text.toString().toDoubleOrNull() ?: 0.0
+                    val lng = etLongitude.text.toString().toDoubleOrNull() ?: 0.0
                     
                     simulationService?.setTargetLocation(lat, lng)
                     
                     AlertDialog.Builder(this)
-                        .setTitle("提示")
-                        .setMessage("位置更新成功")
-                        .setPositiveButton("確定", null)
+                        .setTitle("成功")
+                        .setMessage("已送出虛擬座標，請確保開發者選項已將本程式選為模擬定位應用。")
+                        .setPositiveButton("好的", null)
                         .show()
                 }
 
-                // 綁定服務
                 val intent = Intent(this, GPSSimulationService::class.java)
-                bindService(intent, connection, Context.BIND_AUTO_CREATE)
-            }
-
-            // 遞迴尋找畫面上所有符合型態的 View，跳過 R.id 的綁定限制
-            private fun findAllViews(view: View, editTexts: MutableList<EditText>, buttons: MutableList<Button>) {
-                if (view is EditText) {
-                    editTexts.add(view)
-                } else if (view is Button) {
-                    buttons.add(view)
-                } else if (view is ViewGroup) {
-                    for (i in 0 until view.childCount) {
-                        findAllViews(view.getChildAt(i), editTexts, buttons)
-                    }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(intent)
+                } else {
+                    startService(intent)
                 }
+                bindService(intent, connection, Context.BIND_AUTO_CREATE)
             }
 
             private fun observeServiceState() {
                 lifecycleScope.launch {
                     simulationService?.uiState?.collect { state ->
-                        etLatitude?.text = Editable.Factory.getInstance().newEditable(state.latitude.toString())
-                        etLongitude?.text = Editable.Factory.getInstance().newEditable(state.longitude.toString())
+                        etLatitude.text = Editable.Factory.getInstance().newEditable(state.latitude.toString())
+                        etLongitude.text = Editable.Factory.getInstance().newEditable(state.longitude.toString())
                     }
                 }
             }
@@ -252,11 +276,13 @@ jobs:
         }
         KOTLIN
 
-        # 7. 重新配置 app/build.gradle
-        rm -f app/build.gradle || true
+        # 8. 重新生成構建配置
+        rm -f build.gradle settings.gradle app/build.gradle || true
+        echo "plugins { id 'com.android.application' version '7.3.1' apply false; id 'org.jetbrains.kotlin.android' version '1.7.20' apply false }" > build.gradle
+        echo "pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }; dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }; rootProject.name = 'GPSSimulator'; include ':app'" > settings.gradle
+        
         echo "plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }" > app/build.gradle
         echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }; kotlinOptions { jvmTarget = '11' } }" >> app/build.gradle
-        
         cat << 'GROOVY' >> app/build.gradle
         dependencies {
             implementation 'androidx.core:core-ktx:1.9.0'
@@ -265,11 +291,9 @@ jobs:
             implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
             implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
             implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
-            implementation 'androidx.activity:activity-ktx:1.6.1'
         }
         GROOVY
-
-        echo "✅ 反射相容性環境全數部署完畢！"
+        echo "✅ 權限防禦環境配置完畢！"
 
     # ==================== 步驟二：環境建置 ====================
     - name: Step 2 - Prepare Executable
@@ -282,7 +306,6 @@ jobs:
     - name: Step 3 - Final Compile Production APK
       working-directory: ./gps-simulator-android
       run: |
-        echo "🚀 開始執行最終編譯..."
         ./gradlew clean assembleDebug --no-daemon --no-build-cache
 
     - name: Verify APK Location
@@ -299,7 +322,7 @@ jobs:
         git config --global user.email "gemini-bot@github.com"
         git remote set-url origin https://x-access-token:${PERSONAL_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
         git add .
-        git commit -m "🤖 盲抓相容解耦版 APK 成功出貨！ [skip ci]" || exit 0
+        git commit -m "🤖 權限防禦安全版 APK 出貨！ [skip ci]" || exit 0
         git push --force
 
     - name: Upload APK Artifact
