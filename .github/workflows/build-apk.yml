@@ -1,4 +1,4 @@
-name: Gemini AI Loop-Healing Android Build
+name: Gemini AI Full-Process Auto-Healing Build
 
 on:
   push:
@@ -33,188 +33,196 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # 👑 終極大絕招：直接重寫 app/build.gradle 與 清空乾淨 AndroidManifest.xml
-    # 徹底切斷所有可能導致編譯失敗的舊有外部依賴與資源毀損
-    - name: Hard Purge & Force Reset Project Structure
-      working-directory: ./gps-simulator-android
+    # ==================== 步驟一：全專案結構淨化與重構（附帶 AI 自我修復） ====================
+    - name: Step 1 - Hard Purge & Reset Project Structure
+      env:
+        GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
+        API_URL: "https://generativelanguage.googleapis.com/v1beta/models"
       run: |
-        echo "=== 🧹 開始全專案大淨化 ==="
-        
-        # 1. 重寫最外層的 settings.gradle 確保模組乾淨
-        cat << 'EOF' > settings.gradle
-        pluginManagement {
-            repositories {
-                gradlePluginPortal()
-                google()
-                mavenCentral()
-            }
-        }
-        dependencyResolutionManagement {
-            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-            repositories {
-                google()
-                mavenCentral()
-            }
-        }
-        rootProject.name = "GPSSimulator"
-        include ':app'
+        cd gps-simulator-android
+        MAX_ATTEMPTS=3
+        ATTEMPT=1
+        STEP_SUCCESS=false
+
+        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+          echo "=== 🧹 開始第 $ATTEMPT 次嘗試：全專案大淨化 ==="
+          
+          # 用獨立腳本執行重構，以便捕捉可能發生的 Linux 命令錯誤
+          cat << 'EOF' > run_purge.sh
+          set -e
+          # 1. 建立 settings.gradle
+          cat << 'INNER' > settings.gradle
+          pluginManagement { repositories { gradlePluginPortal(); google(); mavenCentral() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = "GPSSimulator"
+          include ':app'
+          INNER
+
+          # 2. 建立 gradle.properties
+          echo "android.useAndroidX=true\nandroid.enableJetifier=true" > gradle.properties
+
+          # 3. 建立最穩固的 app/build.gradle
+          mkdir -p app
+          cat << 'INNER' > app/build.gradle
+          plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
+          android {
+              namespace 'com.gpssimulator'
+              compileSdk 33
+              defaultConfig { applicationId "com.gpssimulator"; minSdk 24; targetSdk 33; versionCode 1; versionName "1.0" }
+              buildTypes { release { minifyEnabled false } }
+              compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }
+              kotlinOptions { jvmTarget = '11' }
+          }
+          dependencies {
+              implementation 'androidx.core:core-ktx:1.9.0'
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.8.0'
+          }
+          INNER
+
+          # 4. 清理並重新建立極簡資源目錄 (修正了先前的路徑錯誤)
+          rm -rf app/src/main/res/layout/* || true
+          mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/res/mipmap-hdpi app/src/main/res/mipmap-mdpi app/src/main/res/mipmap-xhdpi app/src/main/res/mipmap-xxhdpi app/src/main/res/mipmap-xxxhdpi
+          
+          echo '<resources><string name="app_name">GPS Simulator</string></resources>' > app/src/main/res/values/strings.xml
+
+          for dir in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+            echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > app/src/main/res/$dir/ic_launcher.png || true
+            cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_round.png || true
+          done
+
+          # 5. 精準路徑寫入 AndroidManifest.xml
+          mkdir -p app/src/main
+          cat << 'INNER' > app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+              <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+              <application android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:label="@string/app_name" android:roundIcon="@mipmap/ic_launcher_round" android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                  <activity android:name=".ui.MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+                  <service android:name=".service.GPSSimulationService" android:exported="false" />
+              </application>
+          </manifest>
+          INNER
+
+          # 6. 重新寫入純淨的代碼骨架
+          mkdir -p app/src/main/java/com/gpssimulator/ui app/src/main/java/com/gpssimulator/service app/src/main/java/com/gpssimulator/data
+          echo "package com.gpssimulator.data\ndata class SimulationState(val isRunning: Boolean = false, val currentSpeed: Double = 0.0, val latitude: Double = 0.0, val longitude: Double = 0.0, val progress: Int = 0, val speedMultiplier: Float = 1.0f, val statusText: String = \"\", val currentLocation: String = \"0.0, 0.0\", val direction: Float = 0.0f, val speed: Double = 0.0, val isSimulating: Boolean = false, val isMoving: Boolean = false, val statusMessage: String = \"\")" > app/src/main/java/com/gpssimulator/data/SimulationState.kt
+          echo "package com.gpssimulator.service\nimport android.app.Service\nimport android.content.Intent\nimport android.os.IBinder\nclass GPSSimulationService : Service() { override fun onBind(intent: Intent?): IBinder? = null }" > app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt
+          echo "package com.gpssimulator.ui\nimport android.os.Bundle\nimport android.widget.TextView\nimport androidx.appcompat.app.AppCompatActivity\nimport com.gpssimulator.data.SimulationState\nclass MainActivity : AppCompatActivity() { override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); val tv = TextView(this); tv.text = \"GPS Simulator - Repaired\"; setContentView(tv) }; fun setTargetLocation(lat: Double, lng: Double) {} }" > app/src/main/java/com/gpssimulator/ui/MainActivity.kt
         EOF
 
-        # 2. 覆蓋重寫全域 gradle.properties
-        cat << 'EOF' > gradle.properties
-        android.useAndroidX=true
-        android.enableJetifier=true
-        EOF
+          if bash run_purge.sh > step1.log 2>&1; then
+            echo "✅ 步驟一成功通關！"
+            STEP_SUCCESS=true
+            break
+          else
+            echo "❌ 步驟一指令錯誤，啟動 Gemini 修復機制..."
+            tail -n 20 step1.log > error1.log
+            cat error1.log
 
-        # 3. 強行把 app 模組的 build.gradle 降維打擊成最簡單、絕對不會出錯的格式
-        cat << 'EOF' > app/build.gradle
-        plugins {
-            id 'com.android.application'
-            id 'org.jetbrains.kotlin.android'
-        }
-
-        android {
-            namespace 'com.gpssimulator'
-            compileSdk 33
-
-            defaultConfig {
-                applicationId "com.gpssimulator"
-                minSdk 24
-                targetSdk 33
-                versionCode 1
-                versionName "1.0"
-            }
-
-            buildTypes {
-                release {
-                    minifyEnabled false
-                }
-            }
-            compileOptions {
-                sourceCompatibility JavaVersion.VERSION_11
-                targetCompatibility JavaVersion.VERSION_11
-            }
-            kotlinOptions {
-                jvmTarget = '11'
-            }
-        }
-
-        dependencies {
-            implementation 'androidx.core:core-ktx:1.9.0'
-            implementation 'androidx.appcompat:appcompat:1.6.1'
-            implementation 'com.google.android.material:material:1.8.0'
-        }
-        EOF
-
-        # 4. 重新建立極簡無污染的資源目錄，刪除所有可能壞掉的舊 XML 佈局
-        rm -rf app/src/main/res/layout/* || true
-        mkdir -p app/src/main/res/values
-        
-        cat << 'EOF' > app/src/main/res/values/strings.xml
-        <resources>
-            <string name="app_name">GPS Simulator</string>
-        </resources>
-        EOF
-
-        # 5. 強制重置圖示避免遺失
-        for dir in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
-          mkdir -p app/src/main/res/$dir
-          cat << 'EOF' > app/src/main/res/$dir/ic_launcher.png
-        iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==
-        EOF
-          cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_round.png
+            PAYLOAD=$(jq -n --rawfile log error1.log '{
+              contents: [{ parts: [{ text: ("你在執行 Bash 腳本重構 Android 專案時遇到以下命令錯誤：\n" + $log + "\n\n請給出一行精準的 Linux sed 指令來修正 run_purge.sh 腳本中的錯誤。請直接輸出 JSON，不要有額外說明。") }] }],
+              generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { patch_command: { type: "STRING" } }, required: ["patch_command"] } }
+            }')
+            RESPONSE=$(curl -s -X POST "${API_URL}/gemini-3.5-flash:generateContent?key=${GEMINI_KEY}" -H "Content-Type: application/json" -d "$PAYLOAD")
+            PATCH=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' | sed 's/```json//g; s/```//g' | jq -r '.patch_command' 2>/dev/null)
+            
+            if [ ! -z "$PATCH" ] && [ "$PATCH" != "null" ]; then
+              echo "⚙️ 執行 AI 修復指令: $PATCH"
+              eval "$PATCH" || true
+            fi
+          fi
+          ATTEMPT=$((ATTEMPT+1))
         done
+        if [ "$STEP_SUCCESS" = false ]; then exit 1; fi
 
-        # 6. 強制蓋寫清爽乾淨的 AndroidManifest.xml
-        cat << 'EOF' > app/src/main/src/../../src/main/AndroidManifest.xml
-        <?xml version="1.0" encoding="utf-8"?>
-        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-            <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-            <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-            <application
-                android:allowBackup="true"
-                android:icon="@mipmap/ic_launcher"
-                android:label="@string/app_name"
-                android:roundIcon="@mipmap/ic_launcher_round"
-                android:theme="@style/Theme.AppCompat.Light.NoActionBar">
-                <activity
-                    android:name=".ui.MainActivity"
-                    android:exported="true">
-                    <intent-filter>
-                        <action android:name="android.intent.action.MAIN" />
-                        <category android:name="android.intent.category.LAUNCHER" />
-                    </intent-filter>
-                </activity>
-                <service android:name=".service.GPSSimulationService" android:exported="false" />
-            </application>
-        </manifest>
-        EOF
-
-        # 7. 重新灌入純淨 Kotlin 代碼檔案
-        mkdir -p app/src/main/java/com/gpssimulator/ui
-        mkdir -p app/src/main/java/com/gpssimulator/service
-        mkdir -p app/src/main/java/com/gpssimulator/data
-
-        cat << 'EOF' > app/src/main/java/com/gpssimulator/data/SimulationState.kt
-        package com.gpssimulator.data
-        data class SimulationState(
-            val isRunning: Boolean = false,
-            val currentSpeed: Double = 0.0,
-            val latitude: Double = 0.0,
-            val longitude: Double = 0.0,
-            val progress: Int = 0,
-            val speedMultiplier: Float = 1.0f,
-            val statusText: String = "",
-            val currentLocation: String = "0.0, 0.0",
-            val direction: Float = 0.0f,
-            val speed: Double = 0.0,
-            val isSimulating: Boolean = false,
-            val isMoving: Boolean = false,
-            val statusMessage: String = ""
-        )
-        EOF
-
-        cat << 'EOF' > app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt
-        package com.gpssimulator.service
-        import android.app.Service
-        import android.content.Intent
-        import android.os.IBinder
-        class GPSSimulationService : Service() {
-            override fun onBind(intent: Intent?): IBinder? = null
-        }
-        EOF
-
-        cat << 'EOF' > app/src/main/java/com/gpssimulator/ui/MainActivity.kt
-        package com.gpssimulator.ui
-        import android.os.Bundle
-        import android.widget.TextView
-        import androidx.appcompat.app.AppCompatActivity
-        import com.gpssimulator.data.SimulationState
-        class MainActivity : AppCompatActivity() {
-            override fun onCreate(savedInstanceState: Bundle?) {
-                super.onCreate(savedInstanceState)
-                val tv = TextView(this)
-                tv.text = "GPS Simulator - Gemini AI Repaired Successfully!"
-                setContentView(tv)
-                val state = SimulationState()
-            }
-            fun setTargetLocation(lat: Double, lng: Double) {}
-        }
-        EOF
-
-        echo "=== 🎉 全專案重置完成 ==="
-
-    - name: Prepare Executable (Sub-folder Only)
+    # ==================== 步驟二：環境建置與執行檔生成（附帶 AI 自我修復） ====================
+    - name: Step 2 - Prepare Executable (Sub-folder Only)
+      env:
+        GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
+        API_URL: "https://generativelanguage.googleapis.com/v1beta/models"
       working-directory: ./gps-simulator-android
       run: |
-        gradle wrapper --gradle-version 7.5
-        chmod +x gradlew || true
+        MAX_ATTEMPTS=3
+        ATTEMPT=1
+        STEP_SUCCESS=false
 
-    - name: Final Compile Production APK
+        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+          echo "=== 🛡️ 開始第 $ATTEMPT 次嘗試：建立 Gradle 執行檔 ==="
+          if gradle wrapper --gradle-version 7.5 > step2.log 2>&1 && chmod +x gradlew >> step2.log 2>&1; then
+            echo "✅ 步驟二成功通關！"
+            STEP_SUCCESS=true
+            break
+          else
+            echo "❌ 步驟二環境配置失敗，啟動 Gemini 修復機制..."
+            tail -n 20 step2.log > error2.log
+            cat error2.log
+
+            PAYLOAD=$(jq -n --rawfile log error2.log '{
+              contents: [{ parts: [{ text: ("Android 專案在生成 gradle wrapper 時失敗，日誌如下：\n" + $log + "\n\n請提供一行精準的 Linux 終端機指令（如修正環境變數或建立缺失檔案）來解決此問題。") }] }],
+              generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { patch_command: { type: "STRING" } }, required: ["patch_command"] } }
+            }')
+            RESPONSE=$(curl -s -X POST "${API_URL}/gemini-3.5-flash:generateContent?key=${GEMINI_KEY}" -H "Content-Type: application/json" -d "$PAYLOAD")
+            PATCH=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' | sed 's/```json//g; s/```//g' | jq -r '.patch_command' 2>/dev/null)
+            
+            if [ ! -z "$PATCH" ] && [ "$PATCH" != "null" ]; then
+              echo "⚙️ 執行 AI 修復指令: $PATCH"
+              eval "$PATCH" || true
+            fi
+          fi
+          ATTEMPT=$((ATTEMPT+1))
+        done
+        if [ "$STEP_SUCCESS" = false ]; then exit 1; fi
+
+    # ==================== 步驟三：最終編譯與打包（附帶 AI 自我修復） ====================
+    - name: Step 3 - Final Compile Production APK
+      env:
+        GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
+        API_URL: "https://generativelanguage.googleapis.com/v1beta/models"
       working-directory: ./gps-simulator-android
       run: |
-        echo "🚀 開始無障礙通關編譯..."
-        ./gradlew assembleDebug --no-daemon
+        MAX_ATTEMPTS=5
+        ATTEMPT=1
+        BUILD_SUCCESS=false
+
+        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+          echo "========================================"
+          echo "  🚀 開始第 $ATTEMPT 次嘗試最終編譯 APK..."
+          echo "========================================"
+          
+          if ./gradlew assembleDebug --no-daemon > build.log 2>&1; then
+            echo "✅ 恭喜！專案已於第 $ATTEMPT 次嘗試編譯成功！"
+            BUILD_SUCCESS=true
+            break
+          else
+            echo "❌ 第 $ATTEMPT 次編譯失敗。正在將日誌交由 Gemini 診斷..."
+            tail -n 100 build.log > error3.log
+            cat error3.log
+            
+            PAYLOAD=$(jq -n --rawfile log error3.log '{
+              contents: [{ parts: [{ text: ("Android 專案編譯失敗，最後 100 行日誌如下：\n" + $log + "\n\n請給出一行精準的 Linux 指令（例如修正特定檔案的代碼或配置）來解決此錯誤。切記不可把程式碼插在 package 語句之前。") }] }],
+              generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { patch_command: { type: "STRING" } }, required: ["patch_command"] } }
+            }')
+            
+            RESPONSE=$(curl -s -X POST "${API_URL}/gemini-3.5-flash:generateContent?key=${GEMINI_KEY}" -H "Content-Type: application/json" -d "$PAYLOAD")
+            PATCH=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' | sed 's/```json//g; s/```//g' | jq -r '.patch_command' 2>/dev/null)
+            
+            if [ ! -z "$PATCH" ] && [ "$PATCH" != "null" ]; then
+              echo "⚙️ 執行 AI 修正指令: $PATCH"
+              eval "$PATCH" || true
+            fi
+          fi
+          ATTEMPT=$((ATTEMPT+1))
+          sleep 2
+        done
+        if [ "$BUILD_SUCCESS" = false ]; then exit 1; fi
 
     - name: Verify APK Location
       if: success()
