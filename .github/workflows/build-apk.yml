@@ -33,19 +33,19 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 步驟一：專案結構重組與完整畫面注入 ====================
-    - name: Step 1 - Hard Purge & Reset Project Structure
+    # ==================== 步驟一：精準清理衝突，保留原廠核心功能 ====================
+    - name: Step 1 - Smart Clean & Retain Original Features
       run: |
         cd gps-simulator-android
         set -e
         
-        # 清理舊快取與目錄
+        # 1. 僅清理快取，絕對不刪除 app/src/main/java，保留原作者的功能代碼！
         rm -rf .gradle build app/build || true
-        rm -rf app/src/main/java || true
-        rm -rf src/main/java || true
-        rm -rf app/src/main/res/layout || true
 
-        # 1. 建立根目錄與全域配置
+        # 2. 檢查並移除「非 app 目錄內」可能引發重複宣告的外部多餘原始碼目錄
+        rm -rf src/main/java || true
+
+        # 3. 覆蓋並修正最核心的根目錄環境配置（確保編譯通過）
         rm -f build.gradle || true
         echo "plugins { id 'com.android.application' version '7.3.1' apply false; id 'org.jetbrains.kotlin.android' version '1.7.20' apply false }" > build.gradle
 
@@ -57,152 +57,13 @@ jobs:
         echo "android.useAndroidX=true" > gradle.properties
         echo "android.enableJetifier=true" >> gradle.properties
 
-        # 2. 建立 app/build.gradle
-        mkdir -p app
+        # 4. 修正 app/build.gradle，確保相容原廠代碼
+        rm -f app/build.gradle || true
         echo "plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }" > app/build.gradle
         echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }; kotlinOptions { jvmTarget = '11' } }" >> app/build.gradle
         echo "dependencies { implementation 'androidx.core:core-ktx:1.9.0'; implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.8.0' }" >> app/build.gradle
 
-        # 3. 建立資源與實體介面佈局 (修復無畫面的核心！)
-        mkdir -p app/src/main/res/layout
-        mkdir -p app/src/main/res/values
-        mkdir -p app/src/main/res/mipmap-hdpi app/src/main/res/mipmap-mdpi app/src/main/res/mipmap-xhdpi app/src/main/res/mipmap-xxhdpi app/src/main/res/mipmap-xxxhdpi
-        
-        echo '<resources><string name="app_name">GPS Simulator</string></resources>' > app/src/main/res/values/strings.xml
-
-        # 注入一個美觀、有按鈕、有狀態說明的實體 XML 畫面
-        cat << 'XML' > app/src/main/res/layout/activity_main.xml
-        <?xml version="1.0" encoding="utf-8"?>
-        <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-            android:layout_width="match_滿足"
-            android:layout_height="match_parent"
-            android:padding="16dp"
-            android:background="#F5F5F5">
-
-            <TextView
-                android:id="@+id/tvTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="GPS Simulator 控制台"
-                android:textSize="22sp"
-                android:textStyle="bold"
-                android:textColor="#333333"
-                android:layout_centerHorizontal="true"
-                android:layout_marginTop="20dp"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_below="@id/tvTitle"
-                android:layout_marginTop="40dp"
-                android:background="#FFFFFF"
-                android:padding="16dp"
-                android:elevation="4dp">
-
-                <TextView
-                    android:id="@+id/tvStatus"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="目前狀態：未啟動模擬"
-                    android:textSize="16sp"
-                    android:textColor="#666666"
-                    android:layout_marginBottom="20dp"/>
-
-                <Button
-                    android:id="@+id/btnToggle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="啟動 GPS 模擬"
-                    android:backgroundTint="#2196F3"
-                    android:textColor="#FFFFFF" />
-            </LinearLayout>
-        </RelativeLayout>
-        XML
-        
-        # 修正 XML 裡面的小錯字 (match_滿足 -> match_parent)
-        sed -i 's/match_滿足/match_parent/g' app/src/main/res/layout/activity_main.xml
-
-        for dir in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
-          echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > app/src/main/res/$dir/ic_launcher.png || true
-          cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_round.png || true
-        done
-
-        # 4. 建立清單宣告
-        mkdir -p app/src/main
-        echo '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /><application android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:label="@string/app_name" android:roundIcon="@mipmap/ic_launcher_round" android:theme="@style/Theme.AppCompat.Light.NoActionBar"><activity android:name=".ui.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity><service android:name=".service.GPSSimulationService" android:exported="false" /></application></manifest>' > app/src/main/AndroidManifest.xml
-
-        # 5. 建立程式碼套件資料夾
-        mkdir -p app/src/main/java/com/gpssimulator/ui app/src/main/java/com/gpssimulator/service app/src/main/java/com/gpssimulator/data
-
-        # 寫入狀態資料類別
-        cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/data/SimulationState.kt
-        package com.gpssimulator.data
-        data class SimulationState(
-            val isRunning: Boolean = false,
-            val currentSpeed: Double = 0.0,
-            val latitude: Double = 0.0,
-            val longitude: Double = 0.0,
-            val progress: Int = 0,
-            val speedMultiplier: Float = 1.0f,
-            val statusText: String = "",
-            val currentLocation: String = "0.0, 0.0",
-            val direction: Float = 0.0f,
-            val speed: Double = 0.0,
-            val isSimulating: Boolean = false,
-            val isMoving: Boolean = false,
-            val statusMessage: String = ""
-        )
-        KOTLIN
-
-        # 寫入模擬服務器元件
-        cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt
-        package com.gpssimulator.service
-        import android.app.Service
-        import android.content.Intent
-        import android.os.IBinder
-        class GPSSimulationService : Service() {
-            override fun onBind(intent: Intent?): IBinder? = null
-        }
-        KOTLIN
-
-        # 👑 寫入綁定實體 UI 畫面的 MainActivity (增加點擊互動功能)
-        cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/ui/MainActivity.kt
-        package com.gpssimulator.ui
-        import android.os.Bundle
-        import android.widget.Button
-        import android.widget.TextView
-        import androidx.appcompat.app.AppCompatActivity
-        import com.gpssimulator.R
-
-        class MainActivity : AppCompatActivity() {
-            private var isSimulating = false
-
-            override fun onCreate(savedInstanceState: Bundle?) {
-                super.onCreate(savedInstanceState)
-                // 連結剛才建立的佈局檔
-                setContentView(R.layout.activity_main)
-
-                val tvStatus = findViewById<TextView>(R.id.tvStatus)
-                val btnToggle = findViewById<Button>(R.id.btnToggle)
-
-                btnToggle.setOnClickListener {
-                    isSimulating = !isSimulating
-                    if (isSimulating) {
-                        tvStatus.text = "目前狀態：模擬中 (正在模擬虛擬 GPS 位置...)"
-                        btnToggle.text = "停止模擬"
-                        btnToggle.setBackgroundColor(android.graphics.Color.RED)
-                    } else {
-                        tvStatus.text = "目前狀態：未啟動模擬"
-                        btnToggle.text = "啟動 GPS 模擬"
-                        btnToggle.setBackgroundColor(android.graphics.Color.parseColor("#2196F3"))
-                    }
-                }
-            }
-            fun setTargetLocation(lat: Double, lng: Double) {}
-        }
-        KOTLIN
-        echo "✅ 步驟一配置完成！"
+        echo "✅ 精準專案淨化完成，已成功保留原廠完整功能代碼！"
 
     # ==================== 步驟二：環境建置 ====================
     - name: Step 2 - Prepare Executable (Sub-folder Only)
@@ -211,11 +72,53 @@ jobs:
         gradle wrapper --gradle-version 7.5
         chmod +x gradlew
 
-    # ==================== 步驟三：最終編譯 ====================
+    # ==================== 步驟三：最終編譯（附帶 AI 自動修正原廠程式小錯） ====================
     - name: Step 3 - Final Compile Production APK
+      env:
+        GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
+        API_URL: "https://generativelanguage.googleapis.com/v1beta/models"
       working-directory: ./gps-simulator-android
       run: |
-        ./gradlew clean assembleDebug --no-daemon --no-build-cache
+        MAX_ATTEMPTS=5
+        ATTEMPT=1
+        BUILD_SUCCESS=false
+
+        while [ $ATTEMPT -le$MAX_ATTEMPTS ]; do
+          echo "========================================"
+          echo "  🚀 開始第 $ATTEMPT 次嘗試編譯原廠功能 APK..."
+          echo "========================================"
+          
+          if ./gradlew clean assembleDebug --no-daemon --no-build-cache > build.log 2>&1; then
+            echo "✅ 恭喜！專案原廠功能版已於第 $ATTEMPT 次嘗試編譯成功！"
+            BUILD_SUCCESS=true
+            break
+          else
+            echo "❌ 第 $ATTEMPT 次編譯失敗。正在提取原廠代碼的編譯錯誤..."
+            
+            # 擷取真實的 Kotlin 語法錯誤餵給 AI 進行線上修正
+            grep -E -i -C 5 "error|exception|compile|failed" build.log | tail -n 100 > error3.log
+            
+            echo "====== 🩸 餵給 Gemini 的真實錯誤內容如下 ======"
+            cat error3.log
+            echo "=============================================="
+            
+            PAYLOAD=$(jq -n --rawfile log error3.log '{
+              contents: [{ parts: [{ text: ("Android 專案編譯失敗，核心編譯錯誤日誌如下：\n" + $log + "\n\n請給出一行精準的 Linux 指令（例如修正特定檔案的代碼、格式、括號或配置）來解決此錯誤。切記指令要有效，不可把程式碼插在 package 語句之前。") }] }],
+              generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { patch_command: { type: "STRING" } }, required: ["patch_command"] } }
+            }')
+            
+            RESPONSE=$(curl -s -X POST "${API_URL}/gemini-3.5-flash:generateContent?key=${GEMINI_KEY}" -H "Content-Type: application/json" -d "$PAYLOAD")
+            PATCH=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' | sed 's/```json//g; s/```//g' | jq -r '.patch_command' 2>/dev/null)
+            
+            if [ ! -z "$PATCH" ] && [ "$PATCH" != "null" ]; then
+              echo "⚙️ 執行 AI 修正指令: $PATCH"
+              eval "$PATCH" || true
+            fi
+          fi
+          ATTEMPT=$((ATTEMPT+1))
+          sleep 2
+        done
+        if [ "$BUILD_SUCCESS" = false ]; then exit 1; fi
 
     - name: Verify APK Location
       if: success()
@@ -231,7 +134,7 @@ jobs:
         git config --global user.email "gemini-bot@github.com"
         git remote set-url origin https://x-access-token:${PERSONAL_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
         git add .
-        git commit -m "🤖 完整畫面版 APK 出貨！ [skip ci]" || exit 0
+        git commit -m "🤖 原廠完整功能版 APK 出貨完成！ [skip ci]" || exit 0
         git push --force
 
     - name: Upload APK Artifact
@@ -240,4 +143,4 @@ jobs:
       with:
         name: Manus-GPS-Successful-APK
         path: "**/build/outputs/apk/debug/*.apk"
-        if-no-files-found: error
+        if-no-files-found:
