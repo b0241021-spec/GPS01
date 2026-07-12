@@ -33,7 +33,7 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 步驟一：全專案結構淨化與重構（100% 移除干擾註解） ====================
+    # ==================== 步驟一：全專案結構淨化與重構（無任何註解文字干擾） ====================
     - name: Step 1 - Hard Purge & Reset Project Structure
       env:
         GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -47,27 +47,23 @@ jobs:
         while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
           echo "=== 🧹 開始第 $ATTEMPT 次嘗試：全專案大淨化 ==="
           
-          # 直接使用標準的寫入方式，完全不使用 INNER 包裹，杜絕語法衝突
+          # 徹底移除所有包含 // 或 # 的說明文字，只留純粹的 Linux 指令
           cat << 'EOF' > run_purge.sh
           set -e
           
-          // 1. 建立 settings.gradle
           echo "pluginManagement { repositories { gradlePluginPortal(); google(); mavenCentral() } }" > settings.gradle
           echo "dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }" >> settings.gradle
           echo "rootProject.name = 'GPSSimulator'" >> settings.gradle
           echo "include ':app'" >> settings.gradle
 
-          // 2. 建立 gradle.properties
           echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
 
-          // 3. 建立 app/build.gradle
           mkdir -p app
           echo "plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }" > app/build.gradle
           echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }; kotlinOptions { jvmTarget = '11' } }" >> app/build.gradle
           echo "dependencies { implementation 'androidx.core:core-ktx:1.9.0'; implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.8.0' }" >> app/build.gradle
 
-          // 4. 清理並重製資原始目錄
           rm -rf app/src/main/res/layout/* || true
           mkdir -p app/src/main/res/values
           mkdir -p app/src/main/res/mipmap-hdpi app/src/main/res/mipmap-mdpi app/src/main/res/mipmap-xhdpi app/src/main/res/mipmap-xxhdpi app/src/main/res/mipmap-xxxhdpi
@@ -78,11 +74,9 @@ jobs:
             cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_round.png || true
           done
 
-          // 5. 建立 AndroidManifest.xml
           mkdir -p app/src/main
           echo '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /><application android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:label="@string/app_name" android:roundIcon="@mipmap/ic_launcher_round" android:theme="@style/Theme.AppCompat.Light.NoActionBar"><activity android:name=".ui.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity><service android:name=".service.GPSSimulationService" android:exported="false" /></application></manifest>' > app/src/main/AndroidManifest.xml
 
-          // 6. 重新注入 Kotlin 純淨代碼骨架
           mkdir -p app/src/main/java/com/gpssimulator/ui app/src/main/java/com/gpssimulator/service app/src/main/java/com/gpssimulator/data
           echo "package com.gpssimulator.data\ndata class SimulationState(val isRunning: Boolean = false, val currentSpeed: Double = 0.0, val latitude: Double = 0.0, val longitude: Double = 0.0, val progress: Int = 0, val speedMultiplier: Float = 1.0f, val statusText: String = \"\", val currentLocation: String = \"0.0, 0.0\", val direction: Float = 0.0f, val speed: Double = 0.0, val isSimulating: Boolean = false, val isMoving: Boolean = false, val statusMessage: String = \"\")" > app/src/main/java/com/gpssimulator/data/SimulationState.kt
           echo "package com.gpssimulator.service\nimport android.app.Service\nimport android.content.Intent\nimport android.os.IBinder\nclass GPSSimulationService : Service() { override fun onBind(intent: Intent?): IBinder? = null }" > app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt
@@ -182,7 +176,7 @@ jobs:
               generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { patch_command: { type: "STRING" } }, required: ["patch_command"] } }
             }')
             
-            RESPONSE=$(curl -s -X POST "${API_URL}/gemini-3.5-flash:generateContent?key=${GEMINI_KEY}" -H "Content-Type: application/json" -d "$PAYLOAD")
+            RESPONSE=$(curl -s -X POST "${API_URL}/generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_KEY}" -H "Content-Type: application/json" -d "$PAYLOAD")
             PATCH=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' | sed 's/```json//g; s/```//g' | jq -r '.patch_command' 2>/dev/null)
             
             if [ ! -z "$PATCH" ] && [ "$PATCH" != "null" ]; then
