@@ -33,17 +33,17 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 步驟一：保留原廠 UI，啟用 View Binding 技術 ====================
-    - name: Step 1 - Restore Original UI & Enable View Binding
+    # ==================== 步驟一：強制注入全球鏡像站，擊碎 403 封鎖 ====================
+    - name: Step 1 - Bypass 403 Forbidden with Mirrors & Enable ViewBinding
       run: |
         cd gps-simulator-android
         set -e
         
-        # 1. 清理舊快取與先前手寫的殘留代碼（但絕對不刪除解壓出來的 res/ 資源）
+        # 1. 清理舊快取
         rm -rf .gradle build app/build || true
         rm -rf app/src/main/java/com/gpssimulator/data/* || true
 
-        # 2. 重新配置 gradle.properties
+        # 2. 強制複寫 gradle.properties
         rm -f gradle.properties || true
         echo "android.useAndroidX=true" > gradle.properties
         echo "android.enableJetifier=true" >> gradle.properties
@@ -117,8 +117,7 @@ jobs:
         }
         KOTLIN
 
-        # 6. 👑 完美還原：重寫 MainActivity。我們這次不用手寫視圖，直接用萬能 `findViewById` 動態安全相容，
-        # 即使原廠 XML 裡有再多複雜的 Button、TextView 或地圖元件，也絕對不會被破壞或漏掉！
+        # 6. 完美還原：重寫 MainActivity 並加上動態 ID 掃描
         mkdir -p app/src/main/java/com/gpssimulator/ui
         cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/ui/MainActivity.kt
         package com.gpssimulator.ui
@@ -150,18 +149,15 @@ jobs:
             override fun onCreate(savedInstanceState: Bundle?) {
                 super.onCreate(savedInstanceState)
                 
-                // 100% 載入原廠精美的 layout 介面，絕不覆蓋
                 val layoutId = resources.getIdentifier("activity_main", "layout", packageName)
                 if (layoutId != 0) setContentView(layoutId)
 
-                // 檢查並要求必要的 Android 13 權限
                 val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) permissions.add(Manifest.permission.POST_NOTIFICATIONS)
                 if (permissions.any { ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }) {
                     ActivityCompat.requestPermissions(this, permissions.toTypedArray(), 100)
                 }
 
-                // 👑 萬能安全對接：嘗試綁定原廠 XML 裡可能存在的各種按鈕 ID
                 val btnIds = arrayOf("btnApply", "btn_apply", "button_apply", "start_btn")
                 var applyButton: View? = null
                 for (idStr in btnIds) {
@@ -170,7 +166,6 @@ jobs:
                 }
 
                 applyButton?.setOnClickListener {
-                    // 嘗試撈出輸入框數值
                     val latId = resources.getIdentifier("etLatitude", "id", packageName).let { if(it==0) resources.getIdentifier("et_latitude", "id", packageName) else it }
                     val lngId = resources.getIdentifier("etLongitude", "id", packageName).let { if(it==0) resources.getIdentifier("et_longitude", "id", packageName) else it }
                     
@@ -186,7 +181,6 @@ jobs:
                         .show()
                 }
 
-                // 啟動並綁定服務
                 val intent = Intent(this, GPSSimulationService::class.java)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
                 bindService(intent, connection, Context.BIND_AUTO_CREATE)
@@ -219,10 +213,35 @@ jobs:
         }
         KOTLIN
 
-        # 7. 重新配置 app/build.gradle 並強制開啟 viewBinding 與 dataBinding 支持，完美契合原廠
+        # 7. 👑 核心修復：全面將倉庫地址重寫為阿里雲與騰訊雲代理鏡像，粉碎 403 報錯
         rm -f build.gradle settings.gradle app/build.gradle || true
+        
         echo "plugins { id 'com.android.application' version '7.3.1' apply false; id 'org.jetbrains.kotlin.android' version '1.7.20' apply false }" > build.gradle
-        echo "pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }; dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }; rootProject.name = 'GPSSimulator'; include ':app'" > settings.gradle
+
+        cat << 'GRADLE' > settings.gradle
+        pluginManagement {
+            repositories {
+                maven { url 'https://maven.aliyun.com/repository/public' }
+                maven { url 'https://maven.aliyun.com/repository/google' }
+                maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+                gradlePluginPortal()
+                google()
+                mavenCentral()
+            }
+        }
+        dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+            repositories {
+                maven { url 'https://maven.aliyun.com/repository/public' }
+                maven { url 'https://maven.aliyun.com/repository/google' }
+                maven { url 'https://mirrors.cloud.tencent.com/nexus/repository/maven-public/' }
+                google()
+                mavenCentral()
+            }
+        }
+        rootProject.name = 'GPSSimulator'
+        include ':app'
+        GRADLE
         
         echo "plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }" > app/build.gradle
         echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; buildFeatures { viewBinding true; dataBinding true }; compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }; kotlinOptions { jvmTarget = '11' } }" >> app/build.gradle
@@ -237,7 +256,7 @@ jobs:
             implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
         }
         GROOVY
-        echo "✅ 原廠介面完美相容環境配置完畢！"
+        echo "✅ 鏡像站重定向與原廠介面配置完畢！"
 
     # ==================== 步驟二：環境建置 ====================
     - name: Step 2 - Prepare Executable
@@ -266,7 +285,7 @@ jobs:
         git config --global user.email "gemini-bot@github.com"
         git remote set-url origin https://x-access-token:${PERSONAL_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
         git add .
-        git commit -m "🤖 完美還原原廠介面版 APK 出貨！ [skip ci]" || exit 0
+        git commit -m "🤖 鏡像加速完美介面版 APK 出貨！ [skip ci]" || exit 0
         git push --force
 
     - name: Upload APK Artifact
