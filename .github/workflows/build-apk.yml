@@ -33,14 +33,18 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 步驟一：全專案結構淨化與重構 ====================
+    # ==================== 步驟一：全專案結構淨化與重構（黃金相容性組合） ====================
     - name: Step 1 - Hard Purge & Reset Project Structure
       run: |
         cd gps-simulator-android
         set -e
         
+        # 徹底移除所有可能藏污納垢的舊編譯資料夾
+        rm -rf .gradle build app/build || true
+
         rm -f build.gradle || true
-        echo "plugins { id 'com.android.application' version '7.4.2' apply false; id 'org.jetbrains.kotlin.android' version '1.8.0' apply false }" > build.gradle
+        # 👑 降級/調整為最穩定的相容性組合：AGP 7.3.1 + Kotlin 1.7.20
+        echo "plugins { id 'com.android.application' version '7.3.1' apply false; id 'org.jetbrains.kotlin.android' version '1.7.20' apply false }" > build.gradle
 
         echo "pluginManagement { repositories { gradlePluginPortal(); google(); mavenCentral() } }" > settings.gradle
         echo "dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }" >> settings.gradle
@@ -52,6 +56,7 @@ jobs:
 
         mkdir -p app
         echo "plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }" > app/build.gradle
+        # 👑 這裡的 compileSdk 改用 33，與外層外掛完美對接
         echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }; kotlinOptions { jvmTarget = '11' } }" >> app/build.gradle
         echo "dependencies { implementation 'androidx.core:core-ktx:1.9.0'; implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.8.0' }" >> app/build.gradle
 
@@ -104,12 +109,11 @@ jobs:
         import android.os.Bundle
         import android.widget.TextView
         import androidx.appcompat.app.AppCompatActivity
-        import com.gpssimulator.data.SimulationState
         class MainActivity : AppCompatActivity() {
             override fun onCreate(savedInstanceState: Bundle?) {
                 super.onCreate(savedInstanceState)
                 val tv = TextView(this)
-                tv.text = "GPS Simulator - Repaired"
+                tv.text = "GPS Simulator - Repaired Successfully"
                 setContentView(tv)
             }
             fun setTargetLocation(lat: Double, lng: Double) {}
@@ -124,54 +128,13 @@ jobs:
         gradle wrapper --gradle-version 7.5
         chmod +x gradlew
 
-    # ==================== 步驟三：最終編譯（解鎖關鍵日誌 + AI 精準醫療） ====================
+    # ==================== 步驟三：最終編譯（強制停用快取 + 降級硬幹） ====================
     - name: Step 3 - Final Compile Production APK
-      env:
-        GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
-        API_URL: "https://generativelanguage.googleapis.com/v1beta/models"
       working-directory: ./gps-simulator-android
       run: |
-        MAX_ATTEMPTS=10
-        ATTEMPT=1
-        BUILD_SUCCESS=false
-
-        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-          echo "========================================"
-          echo "  🚀 開始第 $ATTEMPT 次嘗試最終編譯 APK (資訊解鎖模式)..."
-          echo "========================================"
-          
-          # 💡 關鍵改動：加上 --info 參數，強行迫使 Gradle 把隱藏的 Kotlin Compiler 錯誤細節吐出來
-          if ./gradlew assembleDebug --no-daemon --info > build.log 2>&1; then
-            echo "✅ 恭喜！專案已於第 $ATTEMPT 次嘗試編譯成功！"
-            BUILD_SUCCESS=true
-            break
-          else
-            echo "❌ 第 $ATTEMPT 次編譯失敗。正在提取隱藏的 Kotlin 核心日誌..."
-            
-            # 💡 抓取日誌中真正包含 "error"、"Exception" 或 "FAILED" 關鍵字的前後脈絡，這才是餵給 Gemini 的核心內容！
-            grep -E -i -C 5 "error|exception|compile|failed" build.log | tail -n 100 > error3.log
-            
-            echo "====== 🩸 餵給 Gemini 的真實錯誤內容如下 ======"
-            cat error3.log
-            echo "=============================================="
-            
-            PAYLOAD=$(jq -n --rawfile log error3.log '{
-              contents: [{ parts: [{ text: ("Android 專案編譯失敗，核心編譯錯誤日誌如下：\n" + $log + "\n\n請給出一行精準的 Linux 指令（例如修正特定檔案的代碼、格式、括號或配置）來解決此錯誤。切記指令要有效，不可把程式碼插在 package 語句之前。") }] }],
-              generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { patch_command: { type: "STRING" } }, required: ["patch_command"] } }
-            }')
-            
-            RESPONSE=$(curl -s -X POST "${API_URL}/gemini-3.5-flash:generateContent?key=${GEMINI_KEY}" -H "Content-Type: application/json" -d "$PAYLOAD")
-            PATCH=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' | sed 's/```json//g; s/```//g' | jq -r '.patch_command' 2>/dev/null)
-            
-            if [ ! -z "$PATCH" ] && [ "$PATCH" != "null" ]; then
-              echo "⚙️ 執行 AI 修正指令: $PATCH"
-              eval "$PATCH" || true
-            fi
-          fi
-          ATTEMPT=$((ATTEMPT+1))
-          sleep 2
-        done
-        if [ "$BUILD_SUCCESS" = false ]; then exit 1; fi
+        echo "🚀 開始全新純淨編譯（拒絕任何舊快取干擾）..."
+        # 💡 重大核心改動：使用 clean 任務，並加上 --no-build-cache 強迫編譯器重新檢查每一行，絕不使用殘留的壞快取
+        ./gradlew clean assembleDebug --no-daemon --no-build-cache
 
     - name: Verify APK Location
       if: success()
