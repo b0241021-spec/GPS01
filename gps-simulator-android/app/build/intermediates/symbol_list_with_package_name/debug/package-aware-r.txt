@@ -2805,7 +2805,6 @@ id beginning
 id blocking
 id bottom
 id bounce
-id btn_apply
 id buttonPanel
 id cancel_button
 id center
@@ -2834,9 +2833,11 @@ id coordinator
 id cos
 id counterclockwise
 id cradle
+id currentLocationDisplay
 id custom
 id customPanel
 id cut
+id dataBinding
 id date_picker_actions
 id decelerate
 id decelerateAndComplete
@@ -2851,6 +2852,8 @@ id design_navigation_view
 id dialog_button
 id dimensions
 id direct
+id directionSlider
+id directionText
 id disableHome
 id disablePostScroll
 id disableScroll
@@ -2872,8 +2875,6 @@ id end
 id endToStart
 id enterAlways
 id enterAlwaysCollapsed
-id et_latitude
-id et_longitude
 id exitUntilCollapsed
 id expand_activities_button
 id expanded_menu
@@ -2963,6 +2964,7 @@ id month_navigation_next
 id month_navigation_previous
 id month_title
 id motion_base
+id movingSwitch
 id mtrl_anchor_parent
 id mtrl_calendar_day_selector_frame
 id mtrl_calendar_days_of_week
@@ -3003,6 +3005,8 @@ id notification_main_column
 id notification_main_column_container
 id off
 id on
+id onAttachStateChangeListener
+id onDateChanged
 id outline
 id outward
 id packed
@@ -3073,6 +3077,7 @@ id shortcut
 id showCustom
 id showHome
 id showTitle
+id simulationSwitch
 id sin
 id skipCollapsed
 id slide
@@ -3082,6 +3087,8 @@ id snap
 id snapMargins
 id spacer
 id special_effects_controller_view_tag
+id speedSlider
+id speedText
 id spline
 id split_action_bar
 id spread
@@ -3093,11 +3100,14 @@ id src_over
 id standard
 id start
 id startHorizontal
+id startTestButton
 id startToEnd
 id startVertical
 id staticLayout
 id staticPostLayout
+id statusText
 id stop
+id stopTestButton
 id stretch
 id submenuarrow
 id submit_area
@@ -3115,6 +3125,7 @@ id tag_transition_group
 id tag_unhandled_key_event_manager
 id tag_unhandled_key_listeners
 id tag_window_insets_animation_callback
+id targetLocationInput
 id text
 id text2
 id textEnd
@@ -3122,6 +3133,7 @@ id textSpacerNoButtons
 id textSpacerNoTitle
 id textStart
 id textTop
+id textWatcher
 id text_input_end_icon
 id text_input_error_icon
 id text_input_start_icon

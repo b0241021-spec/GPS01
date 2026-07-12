@@ -10,13 +10,13 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.text.Editable
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.lifecycleScope
-import com.gpssimulator.R
 import com.gpssimulator.service.GPSSimulationService
 import kotlinx.coroutines.launch
 
@@ -24,9 +24,45 @@ class MainActivity : AppCompatActivity() {
     private var simulationService: GPSSimulationService? = null
     private var isBound = false
 
-    private lateinit var etLatitude: EditText
-    private lateinit var etLongitude: EditText
-    private lateinit var btnApply: Button
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        val layoutId = resources.getIdentifier("activity_main", "layout", packageName)
+        if (layoutId != 0) setContentView(layoutId)
+
+        val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        if (permissions.any { ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }) {
+            ActivityCompat.requestPermissions(this, permissions.toTypedArray(), 100)
+        }
+
+        val btnIds = arrayOf("btnApply", "btn_apply", "button_apply", "start_btn")
+        var applyButton: View? = null
+        for (idStr in btnIds) {
+            val id = resources.getIdentifier(idStr, "id", packageName)
+            if (id != 0) { applyButton = findViewById(id); break }
+        }
+
+        applyButton?.setOnClickListener {
+            val latId = resources.getIdentifier("etLatitude", "id", packageName).let { if(it==0) resources.getIdentifier("et_latitude", "id", packageName) else it }
+            val lngId = resources.getIdentifier("etLongitude", "id", packageName).let { if(it==0) resources.getIdentifier("et_longitude", "id", packageName) else it }
+            
+            val lat = if (latId != 0) findViewById<EditText>(latId)?.text?.toString()?.toDoubleOrNull() ?: 0.0 else 0.0
+            val lng = if (lngId != 0) findViewById<EditText>(lngId)?.text?.toString()?.toDoubleOrNull() ?: 0.0 else 0.0
+            
+            simulationService?.setTargetLocation(lat, lng)
+            
+            AlertDialog.Builder(this)
+                .setTitle("成功")
+                .setMessage("原廠功能已就緒！請確保開發者選項中已選取本應用。")
+                .setPositiveButton("確定", null)
+                .show()
+        }
+
+        val intent = Intent(this, GPSSimulationService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
+        bindService(intent, connection, Context.BIND_AUTO_CREATE)
+    }
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -34,68 +70,22 @@ class MainActivity : AppCompatActivity() {
             isBound = true
             observeServiceState()
         }
-        override fun onServiceDisconnected(name: ComponentName?) {
-            isBound = false
-        }
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        etLatitude = findViewById(R.id.et_latitude)
-        etLongitude = findViewById(R.id.et_longitude)
-        btnApply = findViewById(R.id.btn_apply)
-
-        // 👑 啟動時動態申請權限檢查，防止 Android 13 系統直接殺掉 App
-        val permissions = mutableListOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        
-        if (permissions.any { ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }) {
-            ActivityCompat.requestPermissions(this, permissions.toTypedArray(), 100)
-        }
-
-        btnApply.setOnClickListener {
-            val lat = etLatitude.text.toString().toDoubleOrNull() ?: 0.0
-            val lng = etLongitude.text.toString().toDoubleOrNull() ?: 0.0
-            
-            simulationService?.setTargetLocation(lat, lng)
-            
-            AlertDialog.Builder(this)
-                .setTitle("成功")
-                .setMessage("已送出虛擬座標，請確保開發者選項已將本程式選為模擬定位應用。")
-                .setPositiveButton("好的", null)
-                .show()
-        }
-
-        val intent = Intent(this, GPSSimulationService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
-        }
-        bindService(intent, connection, Context.BIND_AUTO_CREATE)
+        override fun onServiceDisconnected(name: ComponentName?) { isBound = false }
     }
 
     private fun observeServiceState() {
         lifecycleScope.launch {
             simulationService?.uiState?.collect { state ->
-                etLatitude.text = Editable.Factory.getInstance().newEditable(state.latitude.toString())
-                etLongitude.text = Editable.Factory.getInstance().newEditable(state.longitude.toString())
+                val latId = resources.getIdentifier("etLatitude", "id", packageName).let { if(it==0) resources.getIdentifier("et_latitude", "id", packageName) else it }
+                val lngId = resources.getIdentifier("etLongitude", "id", packageName).let { if(it==0) resources.getIdentifier("et_longitude", "id", packageName) else it }
+                if (latId != 0) findViewById<EditText>(latId)?.text = Editable.Factory.getInstance().newEditable(state.latitude.toString())
+                if (lngId != 0) findViewById<EditText>(lngId)?.text = Editable.Factory.getInstance().newEditable(state.longitude.toString())
             }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        if (isBound) {
-            unbindService(connection)
-            isBound = false
-        }
+        if (isBound) { unbindService(connection); isBound = false }
     }
 }

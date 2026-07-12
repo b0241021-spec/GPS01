@@ -31,13 +31,13 @@ class GPSSimulationService : Service() {
         }
         val notification = NotificationCompat.Builder(this, "gps_service")
             .setContentTitle("GPS Simulator")
-            .setContentText("服務運作中...")
+            .setContentText("原廠模擬服務運行中")
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .build()
         startForeground(1, notification)
     }
 
     fun setTargetLocation(lat: Double, lng: Double) {
-        _uiState.value = SimulationState(lat, lng)
+        _uiState.value = _uiState.value.copy(latitude = lat, longitude = lng)
     }
 }

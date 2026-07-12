@@ -1,1 +1,4 @@
-<resources><string name="app_name">GPS Simulator</string></resources>
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GPS 模擬器</string>
+</resources>
