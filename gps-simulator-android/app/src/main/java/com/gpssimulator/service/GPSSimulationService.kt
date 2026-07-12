@@ -24,17 +24,22 @@ class GPSSimulationService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel("gps_service", "GPS Simulation", NotificationManager.IMPORTANCE_LOW)
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel("gps_service", "GPS Simulation", NotificationManager.IMPORTANCE_LOW)
+                val manager = getSystemService(NotificationManager::class.java)
+                manager?.createNotificationChannel(channel)
+            }
+            val notification = NotificationCompat.Builder(this, "gps_service")
+                .setContentTitle("GPS Simulator")
+                .setContentText("模擬定位服務已就緒")
+                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                .build()
+            startForeground(1, notification)
+        } catch (e: Exception) {
+            // 即使前台通知建立失敗，也絕不讓 Service 崩潰
+            e.printStackTrace()
         }
-        val notification = NotificationCompat.Builder(this, "gps_service")
-            .setContentTitle("GPS Simulator")
-            .setContentText("原廠模擬服務運行中")
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .build()
-        startForeground(1, notification)
     }
 
     fun setTargetLocation(lat: Double, lng: Double) {
