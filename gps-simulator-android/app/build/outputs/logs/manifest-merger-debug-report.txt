@@ -1,16 +1,19 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:39-795
-INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:39-795
-INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:39-795
-INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:39-795
+ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:2:1-40:12
+INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:2:1-40:12
+INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:2:1-40:12
+INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:2:1-40:12
 MERGED from [com.google.android.material:material:1.8.0] /home/runner/.gradle/caches/transforms-3/8227a840a1ec88e56dd9ed198fd96794/transformed/material-1.8.0/AndroidManifest.xml:17:1-26:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] /home/runner/.gradle/caches/transforms-3/ee5e6b8c09f59a7ee2ad2d46faa32a23/transformed/jetified-appcompat-resources-1.6.1/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] /home/runner/.gradle/caches/transforms-3/075fb57686a278db3b4c0b47b214a8ed/transformed/constraintlayout-2.0.1/AndroidManifest.xml:2:1-11:12
 MERGED from [androidx.appcompat:appcompat:1.6.1] /home/runner/.gradle/caches/transforms-3/dc9476a602b5d3ba85354d84722e4f01/transformed/appcompat-1.6.1/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.viewpager2:viewpager2:1.0.0] /home/runner/.gradle/caches/transforms-3/313ef87cd62057f180f859b0255ebb3a/transformed/jetified-viewpager2-1.0.0/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.fragment:fragment:1.3.6] /home/runner/.gradle/caches/transforms-3/398d5fa2985e5cb5728033d39598889a/transformed/fragment-1.3.6/AndroidManifest.xml:17:1-24:12
-MERGED from [androidx.activity:activity:1.6.0] /home/runner/.gradle/caches/transforms-3/1397b8f259846ba7008c280044e1f301/transformed/jetified-activity-1.6.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.activity:activity:1.6.1] /home/runner/.gradle/caches/transforms-3/5ad9d2b9246d62e69ac0ec81f57836e4/transformed/jetified-activity-1.6.1/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.activity:activity-ktx:1.6.1] /home/runner/.gradle/caches/transforms-3/dbb2b03444a48942acc846274ee14645/transformed/jetified-activity-ktx-1.6.1/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-runtime-ktx:2.5.1] /home/runner/.gradle/caches/transforms-3/7dbbbb7db6d72d10b516346bdb0eec90/transformed/jetified-lifecycle-runtime-ktx-2.5.1/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1] /home/runner/.gradle/caches/transforms-3/66c4308cfffb7c8fac751f298ee4f643/transformed/jetified-lifecycle-viewmodel-ktx-2.5.1/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.dynamicanimation:dynamicanimation:1.0.0] /home/runner/.gradle/caches/transforms-3/93b8be8fe4cc5a043aadcc1c80fc843f/transformed/dynamicanimation-1.0.0/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.legacy:legacy-support-core-utils:1.0.0] /home/runner/.gradle/caches/transforms-3/be446c5055350372e33c4807a5c5a45b/transformed/legacy-support-core-utils-1.0.0/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.loader:loader:1.0.0] /home/runner/.gradle/caches/transforms-3/d3869fbd055815b13eddc33ae287c194/transformed/loader-1.0.0/AndroidManifest.xml:17:1-22:12
@@ -28,6 +31,7 @@ MERGED from [androidx.recyclerview:recyclerview:1.1.0] /home/runner/.gradle/cach
 MERGED from [androidx.customview:customview:1.1.0] /home/runner/.gradle/caches/transforms-3/2b07c9be6e379bc1a13d8cb588c1503c/transformed/customview-1.1.0/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/86921c9a8ae0d631920d76ee80dd5b5f/transformed/core-1.9.0/AndroidManifest.xml:17:1-30:12
 MERGED from [androidx.core:core-ktx:1.9.0] /home/runner/.gradle/caches/transforms-3/8b23dce433dd01e80920f9951228cbab/transformed/jetified-core-ktx-1.9.0/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.savedstate:savedstate-ktx:1.2.0] /home/runner/.gradle/caches/transforms-3/9d6d984f0d3fafda14b59c7fb872ed3c/transformed/jetified-savedstate-ktx-1.2.0/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.savedstate:savedstate:1.2.0] /home/runner/.gradle/caches/transforms-3/8a1f08bc52a3930cca100be7310b3359/transformed/jetified-savedstate-1.2.0/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.annotation:annotation-experimental:1.3.0] /home/runner/.gradle/caches/transforms-3/dc9529c39d2662c626e6d8c12891b86b/transformed/jetified-annotation-experimental-1.3.0/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] /home/runner/.gradle/caches/transforms-3/d875551e89d1d1116041e166acc6be2a/transformed/cursoradapter-1.0.0/AndroidManifest.xml:17:1-22:12
@@ -35,42 +39,66 @@ MERGED from [androidx.lifecycle:lifecycle-process:2.4.1] /home/runner/.gradle/ca
 MERGED from [androidx.lifecycle:lifecycle-runtime:2.5.1] /home/runner/.gradle/caches/transforms-3/5a60de85af9f8fb3275893019632ec3a/transformed/lifecycle-runtime-2.5.1/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.cardview:cardview:1.0.0] /home/runner/.gradle/caches/transforms-3/b9de0bce1ab3ef05320d97e9424e5448/transformed/cardview-1.0.0/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /home/runner/.gradle/caches/transforms-3/08e52825ec817e8810711455f46d52f6/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:17:1-27:12
-MERGED from [androidx.startup:startup-runtime:1.1.1] /home/runner/.gradle/caches/transforms-3/5feceda48db9a84c7159f3cbfae3d048/transformed/jetified-startup-runtime-1.1.1/AndroidManifest.xml:17:1-33:12
-MERGED from [androidx.tracing:tracing:1.0.0] /home/runner/.gradle/caches/transforms-3/f6d3e764719e5cfaf929577f53699f06/transformed/jetified-tracing-1.0.0/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.lifecycle:lifecycle-livedata:2.0.0] /home/runner/.gradle/caches/transforms-3/2a38d2a85134f808af716661533a3303/transformed/lifecycle-livedata-2.0.0/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.5.1] /home/runner/.gradle/caches/transforms-3/4cd081efc1ce1d7cf51afcb52cfc4cb2/transformed/lifecycle-livedata-core-2.5.1/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.arch.core:core-runtime:2.1.0] /home/runner/.gradle/caches/transforms-3/d7dc30ee03867a1147889695f71a249e/transformed/core-runtime-2.1.0/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.startup:startup-runtime:1.1.1] /home/runner/.gradle/caches/transforms-3/5feceda48db9a84c7159f3cbfae3d048/transformed/jetified-startup-runtime-1.1.1/AndroidManifest.xml:17:1-33:12
+MERGED from [androidx.tracing:tracing:1.0.0] /home/runner/.gradle/caches/transforms-3/f6d3e764719e5cfaf929577f53699f06/transformed/jetified-tracing-1.0.0/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.interpolator:interpolator:1.0.0] /home/runner/.gradle/caches/transforms-3/064a57ec69c99b854900b4e3872ac10a/transformed/interpolator-1.0.0/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.documentfile:documentfile:1.0.0] /home/runner/.gradle/caches/transforms-3/f5aefefc1143c26f250b953dc308bc4f/transformed/documentfile-1.0.0/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.localbroadcastmanager:localbroadcastmanager:1.0.0] /home/runner/.gradle/caches/transforms-3/3dc435887fc2177a5ad99feaf14dbc41/transformed/localbroadcastmanager-1.0.0/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.print:print:1.0.0] /home/runner/.gradle/caches/transforms-3/08b0d5685293ecba589478a35e0e8760/transformed/print-1.0.0/AndroidManifest.xml:17:1-22:12
-INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:39-795
-INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:39-795
-INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:39-795
+INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:2:1-40:12
+INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:2:1-40:12
+INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:2:1-40:12
 	package
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:3:5-31
 		INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:39-795
 		INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml
 	android:versionName
 		INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:39-795
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:2:1-40:12
 		INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml
 	android:versionCode
 		INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:39-795
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:2:1-40:12
 		INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml
 	xmlns:android
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:49-107
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:2:11-69
+uses-permission#android.permission.INTERNET
+ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:5:5-67
+	android:name
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:5:22-64
 uses-permission#android.permission.ACCESS_FINE_LOCATION
-ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:108-182
+ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:6:5-79
 	android:name
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:125-179
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:6:22-76
 uses-permission#android.permission.ACCESS_COARSE_LOCATION
-ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:182-258
+ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:7:5-81
 	android:name
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:199-255
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:7:22-78
+uses-permission#android.permission.ACCESS_NETWORK_STATE
+ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:8:5-79
+	android:name
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:8:22-76
+uses-permission#android.permission.WRITE_EXTERNAL_STORAGE
+ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:9:5-81
+	android:name
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:9:22-78
+uses-permission#android.permission.READ_EXTERNAL_STORAGE
+ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:10:5-80
+	android:name
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:10:22-77
+uses-permission#android.permission.ACCESS_BACKGROUND_LOCATION
+ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:11:5-85
+	android:name
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:11:22-82
+uses-permission#android.permission.ACCESS_MOCK_LOCATION
+ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:12:5-79
+	android:name
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:12:22-76
 application
-ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:258-784
+ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:14:5-38:19
 MERGED from [com.google.android.material:material:1.8.0] /home/runner/.gradle/caches/transforms-3/8227a840a1ec88e56dd9ed198fd96794/transformed/material-1.8.0/AndroidManifest.xml:24:5-20
 MERGED from [com.google.android.material:material:1.8.0] /home/runner/.gradle/caches/transforms-3/8227a840a1ec88e56dd9ed198fd96794/transformed/material-1.8.0/AndroidManifest.xml:24:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] /home/runner/.gradle/caches/transforms-3/075fb57686a278db3b4c0b47b214a8ed/transformed/constraintlayout-2.0.1/AndroidManifest.xml:9:5-20
@@ -85,40 +113,48 @@ MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /home/runne
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /home/runner/.gradle/caches/transforms-3/08e52825ec817e8810711455f46d52f6/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:24:5-25:19
 MERGED from [androidx.startup:startup-runtime:1.1.1] /home/runner/.gradle/caches/transforms-3/5feceda48db9a84c7159f3cbfae3d048/transformed/jetified-startup-runtime-1.1.1/AndroidManifest.xml:25:5-31:19
 MERGED from [androidx.startup:startup-runtime:1.1.1] /home/runner/.gradle/caches/transforms-3/5feceda48db9a84c7159f3cbfae3d048/transformed/jetified-startup-runtime-1.1.1/AndroidManifest.xml:25:5-31:19
+	android:requestLegacyExternalStorage
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:21:9-52
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/86921c9a8ae0d631920d76ee80dd5b5f/transformed/core-1.9.0/AndroidManifest.xml:28:18-86
+	android:supportsRtl
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:18:9-35
 	android:label
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:333-365
-	android:roundIcon
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:366-411
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:17:9-41
 	android:icon
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:298-332
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:16:9-43
 	android:allowBackup
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:271-297
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:15:9-35
 	android:theme
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:412-468
-activity#com.gpssimulator.ui.MainActivity
-ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:469-689
-	android:exported
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:511-534
-	android:name
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:479-510
-intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:535-678
-action#android.intent.action.MAIN
-ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:550-602
-	android:name
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:558-599
-category#android.intent.category.LAUNCHER
-ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:602-662
-	android:name
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:612-659
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:19:9-50
+	android:usesCleartextTraffic
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:20:9-44
 service#com.gpssimulator.service.GPSSimulationService
-ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:689-770
+ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:23:9-26:40
+	android:enabled
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:25:13-35
 	android:exported
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:743-767
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:26:13-37
 	android:name
-		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:698-742
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:24:13-57
+activity#com.gpssimulator.ui.MainActivity
+ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:28:9-36:20
+	android:screenOrientation
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:31:13-49
+	android:exported
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:30:13-36
+	android:name
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:29:13-44
+intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
+ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:32:13-35:29
+action#android.intent.action.MAIN
+ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:33:17-69
+	android:name
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:33:25-66
+category#android.intent.category.LAUNCHER
+ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:34:17-77
+	android:name
+		ADDED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:34:27-74
 uses-sdk
 INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml
@@ -135,8 +171,14 @@ MERGED from [androidx.viewpager2:viewpager2:1.0.0] /home/runner/.gradle/caches/t
 MERGED from [androidx.viewpager2:viewpager2:1.0.0] /home/runner/.gradle/caches/transforms-3/313ef87cd62057f180f859b0255ebb3a/transformed/jetified-viewpager2-1.0.0/AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.fragment:fragment:1.3.6] /home/runner/.gradle/caches/transforms-3/398d5fa2985e5cb5728033d39598889a/transformed/fragment-1.3.6/AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.fragment:fragment:1.3.6] /home/runner/.gradle/caches/transforms-3/398d5fa2985e5cb5728033d39598889a/transformed/fragment-1.3.6/AndroidManifest.xml:20:5-22:41
-MERGED from [androidx.activity:activity:1.6.0] /home/runner/.gradle/caches/transforms-3/1397b8f259846ba7008c280044e1f301/transformed/jetified-activity-1.6.0/AndroidManifest.xml:20:5-44
-MERGED from [androidx.activity:activity:1.6.0] /home/runner/.gradle/caches/transforms-3/1397b8f259846ba7008c280044e1f301/transformed/jetified-activity-1.6.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.activity:activity:1.6.1] /home/runner/.gradle/caches/transforms-3/5ad9d2b9246d62e69ac0ec81f57836e4/transformed/jetified-activity-1.6.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.activity:activity:1.6.1] /home/runner/.gradle/caches/transforms-3/5ad9d2b9246d62e69ac0ec81f57836e4/transformed/jetified-activity-1.6.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.activity:activity-ktx:1.6.1] /home/runner/.gradle/caches/transforms-3/dbb2b03444a48942acc846274ee14645/transformed/jetified-activity-ktx-1.6.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.activity:activity-ktx:1.6.1] /home/runner/.gradle/caches/transforms-3/dbb2b03444a48942acc846274ee14645/transformed/jetified-activity-ktx-1.6.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime-ktx:2.5.1] /home/runner/.gradle/caches/transforms-3/7dbbbb7db6d72d10b516346bdb0eec90/transformed/jetified-lifecycle-runtime-ktx-2.5.1/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.lifecycle:lifecycle-runtime-ktx:2.5.1] /home/runner/.gradle/caches/transforms-3/7dbbbb7db6d72d10b516346bdb0eec90/transformed/jetified-lifecycle-runtime-ktx-2.5.1/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1] /home/runner/.gradle/caches/transforms-3/66c4308cfffb7c8fac751f298ee4f643/transformed/jetified-lifecycle-viewmodel-ktx-2.5.1/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1] /home/runner/.gradle/caches/transforms-3/66c4308cfffb7c8fac751f298ee4f643/transformed/jetified-lifecycle-viewmodel-ktx-2.5.1/AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.dynamicanimation:dynamicanimation:1.0.0] /home/runner/.gradle/caches/transforms-3/93b8be8fe4cc5a043aadcc1c80fc843f/transformed/dynamicanimation-1.0.0/AndroidManifest.xml:20:5-44
 MERGED from [androidx.dynamicanimation:dynamicanimation:1.0.0] /home/runner/.gradle/caches/transforms-3/93b8be8fe4cc5a043aadcc1c80fc843f/transformed/dynamicanimation-1.0.0/AndroidManifest.xml:20:5-44
 MERGED from [androidx.legacy:legacy-support-core-utils:1.0.0] /home/runner/.gradle/caches/transforms-3/be446c5055350372e33c4807a5c5a45b/transformed/legacy-support-core-utils-1.0.0/AndroidManifest.xml:20:5-44
@@ -171,6 +213,8 @@ MERGED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/
 MERGED from [androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/86921c9a8ae0d631920d76ee80dd5b5f/transformed/core-1.9.0/AndroidManifest.xml:20:5-44
 MERGED from [androidx.core:core-ktx:1.9.0] /home/runner/.gradle/caches/transforms-3/8b23dce433dd01e80920f9951228cbab/transformed/jetified-core-ktx-1.9.0/AndroidManifest.xml:5:5-44
 MERGED from [androidx.core:core-ktx:1.9.0] /home/runner/.gradle/caches/transforms-3/8b23dce433dd01e80920f9951228cbab/transformed/jetified-core-ktx-1.9.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.savedstate:savedstate-ktx:1.2.0] /home/runner/.gradle/caches/transforms-3/9d6d984f0d3fafda14b59c7fb872ed3c/transformed/jetified-savedstate-ktx-1.2.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.savedstate:savedstate-ktx:1.2.0] /home/runner/.gradle/caches/transforms-3/9d6d984f0d3fafda14b59c7fb872ed3c/transformed/jetified-savedstate-ktx-1.2.0/AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.savedstate:savedstate:1.2.0] /home/runner/.gradle/caches/transforms-3/8a1f08bc52a3930cca100be7310b3359/transformed/jetified-savedstate-1.2.0/AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.savedstate:savedstate:1.2.0] /home/runner/.gradle/caches/transforms-3/8a1f08bc52a3930cca100be7310b3359/transformed/jetified-savedstate-1.2.0/AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.annotation:annotation-experimental:1.3.0] /home/runner/.gradle/caches/transforms-3/dc9529c39d2662c626e6d8c12891b86b/transformed/jetified-annotation-experimental-1.3.0/AndroidManifest.xml:20:5-44
@@ -185,16 +229,16 @@ MERGED from [androidx.cardview:cardview:1.0.0] /home/runner/.gradle/caches/trans
 MERGED from [androidx.cardview:cardview:1.0.0] /home/runner/.gradle/caches/transforms-3/b9de0bce1ab3ef05320d97e9424e5448/transformed/cardview-1.0.0/AndroidManifest.xml:20:5-44
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /home/runner/.gradle/caches/transforms-3/08e52825ec817e8810711455f46d52f6/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /home/runner/.gradle/caches/transforms-3/08e52825ec817e8810711455f46d52f6/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:20:5-22:41
-MERGED from [androidx.startup:startup-runtime:1.1.1] /home/runner/.gradle/caches/transforms-3/5feceda48db9a84c7159f3cbfae3d048/transformed/jetified-startup-runtime-1.1.1/AndroidManifest.xml:21:5-23:41
-MERGED from [androidx.startup:startup-runtime:1.1.1] /home/runner/.gradle/caches/transforms-3/5feceda48db9a84c7159f3cbfae3d048/transformed/jetified-startup-runtime-1.1.1/AndroidManifest.xml:21:5-23:41
-MERGED from [androidx.tracing:tracing:1.0.0] /home/runner/.gradle/caches/transforms-3/f6d3e764719e5cfaf929577f53699f06/transformed/jetified-tracing-1.0.0/AndroidManifest.xml:20:5-22:41
-MERGED from [androidx.tracing:tracing:1.0.0] /home/runner/.gradle/caches/transforms-3/f6d3e764719e5cfaf929577f53699f06/transformed/jetified-tracing-1.0.0/AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.lifecycle:lifecycle-livedata:2.0.0] /home/runner/.gradle/caches/transforms-3/2a38d2a85134f808af716661533a3303/transformed/lifecycle-livedata-2.0.0/AndroidManifest.xml:20:5-44
 MERGED from [androidx.lifecycle:lifecycle-livedata:2.0.0] /home/runner/.gradle/caches/transforms-3/2a38d2a85134f808af716661533a3303/transformed/lifecycle-livedata-2.0.0/AndroidManifest.xml:20:5-44
 MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.5.1] /home/runner/.gradle/caches/transforms-3/4cd081efc1ce1d7cf51afcb52cfc4cb2/transformed/lifecycle-livedata-core-2.5.1/AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.5.1] /home/runner/.gradle/caches/transforms-3/4cd081efc1ce1d7cf51afcb52cfc4cb2/transformed/lifecycle-livedata-core-2.5.1/AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.arch.core:core-runtime:2.1.0] /home/runner/.gradle/caches/transforms-3/d7dc30ee03867a1147889695f71a249e/transformed/core-runtime-2.1.0/AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.arch.core:core-runtime:2.1.0] /home/runner/.gradle/caches/transforms-3/d7dc30ee03867a1147889695f71a249e/transformed/core-runtime-2.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.startup:startup-runtime:1.1.1] /home/runner/.gradle/caches/transforms-3/5feceda48db9a84c7159f3cbfae3d048/transformed/jetified-startup-runtime-1.1.1/AndroidManifest.xml:21:5-23:41
+MERGED from [androidx.startup:startup-runtime:1.1.1] /home/runner/.gradle/caches/transforms-3/5feceda48db9a84c7159f3cbfae3d048/transformed/jetified-startup-runtime-1.1.1/AndroidManifest.xml:21:5-23:41
+MERGED from [androidx.tracing:tracing:1.0.0] /home/runner/.gradle/caches/transforms-3/f6d3e764719e5cfaf929577f53699f06/transformed/jetified-tracing-1.0.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.tracing:tracing:1.0.0] /home/runner/.gradle/caches/transforms-3/f6d3e764719e5cfaf929577f53699f06/transformed/jetified-tracing-1.0.0/AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.interpolator:interpolator:1.0.0] /home/runner/.gradle/caches/transforms-3/064a57ec69c99b854900b4e3872ac10a/transformed/interpolator-1.0.0/AndroidManifest.xml:20:5-44
 MERGED from [androidx.interpolator:interpolator:1.0.0] /home/runner/.gradle/caches/transforms-3/064a57ec69c99b854900b4e3872ac10a/transformed/interpolator-1.0.0/AndroidManifest.xml:20:5-44
 MERGED from [androidx.documentfile:documentfile:1.0.0] /home/runner/.gradle/caches/transforms-3/f5aefefc1143c26f250b953dc308bc4f/transformed/documentfile-1.0.0/AndroidManifest.xml:20:5-44

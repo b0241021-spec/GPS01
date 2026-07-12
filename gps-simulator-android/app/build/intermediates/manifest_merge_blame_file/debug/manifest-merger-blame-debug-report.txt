@@ -10,86 +10,112 @@
 9        android:targetSdkVersion="33" />
 9-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml
 10
-11    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-11-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:108-182
-11-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:125-179
-12    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-12-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:182-258
-12-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:199-255
-13
-14    <permission
-14-->[androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/86921c9a8ae0d631920d76ee80dd5b5f/transformed/core-1.9.0/AndroidManifest.xml:22:5-24:47
-15        android:name="com.gpssimulator.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
-15-->[androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/86921c9a8ae0d631920d76ee80dd5b5f/transformed/core-1.9.0/AndroidManifest.xml:23:9-81
-16        android:protectionLevel="signature" />
-16-->[androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/86921c9a8ae0d631920d76ee80dd5b5f/transformed/core-1.9.0/AndroidManifest.xml:24:9-44
-17
-18    <uses-permission android:name="com.gpssimulator.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
-18-->[androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/86921c9a8ae0d631920d76ee80dd5b5f/transformed/core-1.9.0/AndroidManifest.xml:26:5-97
-18-->[androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/86921c9a8ae0d631920d76ee80dd5b5f/transformed/core-1.9.0/AndroidManifest.xml:26:22-94
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:5:5-67
+11-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:5:22-64
+12    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+12-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:6:5-79
+12-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:6:22-76
+13    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+13-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:7:5-81
+13-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:7:22-78
+14    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+14-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:8:5-79
+14-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:8:22-76
+15    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+15-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:9:5-81
+15-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:9:22-78
+16    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+16-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:10:5-80
+16-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:10:22-77
+17    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+17-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:11:5-85
+17-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:11:22-82
+18    <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION" />
+18-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:12:5-79
+18-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:12:22-76
 19
-20    <application
-20-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:258-784
-21        android:allowBackup="true"
-21-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:271-297
-22        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
-22-->[androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/86921c9a8ae0d631920d76ee80dd5b5f/transformed/core-1.9.0/AndroidManifest.xml:28:18-86
-23        android:debuggable="true"
-24        android:extractNativeLibs="false"
-25        android:icon="@mipmap/ic_launcher"
-25-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:298-332
-26        android:label="@string/app_name"
-26-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:333-365
-27        android:roundIcon="@mipmap/ic_launcher_round"
-27-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:366-411
-28        android:theme="@style/Theme.AppCompat.Light.NoActionBar" >
-28-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:412-468
-29        <activity
-29-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:469-689
-30            android:name="com.gpssimulator.ui.MainActivity"
-30-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:479-510
-31            android:exported="true" >
-31-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:511-534
-32            <intent-filter>
-32-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:535-678
-33                <action android:name="android.intent.action.MAIN" />
-33-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:550-602
-33-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:558-599
-34
-35                <category android:name="android.intent.category.LAUNCHER" />
-35-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:602-662
-35-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:612-659
-36            </intent-filter>
-37        </activity>
-38
-39        <service
-39-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:689-770
-40            android:name="com.gpssimulator.service.GPSSimulationService"
-40-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:698-742
-41            android:exported="false" />
-41-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:1:743-767
-42
-43        <provider
-43-->[androidx.emoji2:emoji2:1.2.0] /home/runner/.gradle/caches/transforms-3/b1f147c09774f06a6973260ff1129f33/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:24:9-32:20
-44            android:name="androidx.startup.InitializationProvider"
-44-->[androidx.emoji2:emoji2:1.2.0] /home/runner/.gradle/caches/transforms-3/b1f147c09774f06a6973260ff1129f33/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:25:13-67
-45            android:authorities="com.gpssimulator.androidx-startup"
-45-->[androidx.emoji2:emoji2:1.2.0] /home/runner/.gradle/caches/transforms-3/b1f147c09774f06a6973260ff1129f33/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:26:13-68
-46            android:exported="false" >
-46-->[androidx.emoji2:emoji2:1.2.0] /home/runner/.gradle/caches/transforms-3/b1f147c09774f06a6973260ff1129f33/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:27:13-37
-47            <meta-data
-47-->[androidx.emoji2:emoji2:1.2.0] /home/runner/.gradle/caches/transforms-3/b1f147c09774f06a6973260ff1129f33/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:29:13-31:52
-48                android:name="androidx.emoji2.text.EmojiCompatInitializer"
-48-->[androidx.emoji2:emoji2:1.2.0] /home/runner/.gradle/caches/transforms-3/b1f147c09774f06a6973260ff1129f33/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:30:17-75
-49                android:value="androidx.startup" />
-49-->[androidx.emoji2:emoji2:1.2.0] /home/runner/.gradle/caches/transforms-3/b1f147c09774f06a6973260ff1129f33/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:31:17-49
-50            <meta-data
-50-->[androidx.lifecycle:lifecycle-process:2.4.1] /home/runner/.gradle/caches/transforms-3/face6201a46f738f50acaf6eba84980a/transformed/jetified-lifecycle-process-2.4.1/AndroidManifest.xml:31:13-33:52
-51                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
-51-->[androidx.lifecycle:lifecycle-process:2.4.1] /home/runner/.gradle/caches/transforms-3/face6201a46f738f50acaf6eba84980a/transformed/jetified-lifecycle-process-2.4.1/AndroidManifest.xml:32:17-78
-52                android:value="androidx.startup" />
-52-->[androidx.lifecycle:lifecycle-process:2.4.1] /home/runner/.gradle/caches/transforms-3/face6201a46f738f50acaf6eba84980a/transformed/jetified-lifecycle-process-2.4.1/AndroidManifest.xml:33:17-49
-53        </provider>
-54    </application>
-55
-56</manifest>
+20    <permission
+20-->[androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/86921c9a8ae0d631920d76ee80dd5b5f/transformed/core-1.9.0/AndroidManifest.xml:22:5-24:47
+21        android:name="com.gpssimulator.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+21-->[androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/86921c9a8ae0d631920d76ee80dd5b5f/transformed/core-1.9.0/AndroidManifest.xml:23:9-81
+22        android:protectionLevel="signature" />
+22-->[androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/86921c9a8ae0d631920d76ee80dd5b5f/transformed/core-1.9.0/AndroidManifest.xml:24:9-44
+23
+24    <uses-permission android:name="com.gpssimulator.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+24-->[androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/86921c9a8ae0d631920d76ee80dd5b5f/transformed/core-1.9.0/AndroidManifest.xml:26:5-97
+24-->[androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/86921c9a8ae0d631920d76ee80dd5b5f/transformed/core-1.9.0/AndroidManifest.xml:26:22-94
+25
+26    <application
+26-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:14:5-38:19
+27        android:allowBackup="true"
+27-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:15:9-35
+28        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+28-->[androidx.core:core:1.9.0] /home/runner/.gradle/caches/transforms-3/86921c9a8ae0d631920d76ee80dd5b5f/transformed/core-1.9.0/AndroidManifest.xml:28:18-86
+29        android:debuggable="true"
+30        android:extractNativeLibs="false"
+31        android:icon="@mipmap/ic_launcher"
+31-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:16:9-43
+32        android:label="@string/app_name"
+32-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:17:9-41
+33        android:requestLegacyExternalStorage="true"
+33-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:21:9-52
+34        android:supportsRtl="true"
+34-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:18:9-35
+35        android:theme="@style/Theme.GPSSimulator"
+35-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:19:9-50
+36        android:usesCleartextTraffic="true" >
+36-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:20:9-44
+37        <service
+37-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:23:9-26:40
+38            android:name="com.gpssimulator.service.GPSSimulationService"
+38-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:24:13-57
+39            android:enabled="true"
+39-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:25:13-35
+40            android:exported="false" />
+40-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:26:13-37
+41
+42        <activity
+42-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:28:9-36:20
+43            android:name="com.gpssimulator.ui.MainActivity"
+43-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:29:13-44
+44            android:exported="true"
+44-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:30:13-36
+45            android:screenOrientation="portrait" >
+45-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:31:13-49
+46            <intent-filter>
+46-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:32:13-35:29
+47                <action android:name="android.intent.action.MAIN" />
+47-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:33:17-69
+47-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:33:25-66
+48
+49                <category android:name="android.intent.category.LAUNCHER" />
+49-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:34:17-77
+49-->/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/AndroidManifest.xml:34:27-74
+50            </intent-filter>
+51        </activity>
+52
+53        <provider
+53-->[androidx.emoji2:emoji2:1.2.0] /home/runner/.gradle/caches/transforms-3/b1f147c09774f06a6973260ff1129f33/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:24:9-32:20
+54            android:name="androidx.startup.InitializationProvider"
+54-->[androidx.emoji2:emoji2:1.2.0] /home/runner/.gradle/caches/transforms-3/b1f147c09774f06a6973260ff1129f33/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:25:13-67
+55            android:authorities="com.gpssimulator.androidx-startup"
+55-->[androidx.emoji2:emoji2:1.2.0] /home/runner/.gradle/caches/transforms-3/b1f147c09774f06a6973260ff1129f33/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:26:13-68
+56            android:exported="false" >
+56-->[androidx.emoji2:emoji2:1.2.0] /home/runner/.gradle/caches/transforms-3/b1f147c09774f06a6973260ff1129f33/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:27:13-37
+57            <meta-data
+57-->[androidx.emoji2:emoji2:1.2.0] /home/runner/.gradle/caches/transforms-3/b1f147c09774f06a6973260ff1129f33/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:29:13-31:52
+58                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+58-->[androidx.emoji2:emoji2:1.2.0] /home/runner/.gradle/caches/transforms-3/b1f147c09774f06a6973260ff1129f33/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:30:17-75
+59                android:value="androidx.startup" />
+59-->[androidx.emoji2:emoji2:1.2.0] /home/runner/.gradle/caches/transforms-3/b1f147c09774f06a6973260ff1129f33/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:31:17-49
+60            <meta-data
+60-->[androidx.lifecycle:lifecycle-process:2.4.1] /home/runner/.gradle/caches/transforms-3/face6201a46f738f50acaf6eba84980a/transformed/jetified-lifecycle-process-2.4.1/AndroidManifest.xml:31:13-33:52
+61                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+61-->[androidx.lifecycle:lifecycle-process:2.4.1] /home/runner/.gradle/caches/transforms-3/face6201a46f738f50acaf6eba84980a/transformed/jetified-lifecycle-process-2.4.1/AndroidManifest.xml:32:17-78
+62                android:value="androidx.startup" />
+62-->[androidx.lifecycle:lifecycle-process:2.4.1] /home/runner/.gradle/caches/transforms-3/face6201a46f738f50acaf6eba84980a/transformed/jetified-lifecycle-process-2.4.1/AndroidManifest.xml:33:17-49
+63        </provider>
+64    </application>
+65
+66</manifest>

@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.gpssimulator.app-mergeDebugResources-27:/values-tl/values-tl.xml",
+            "outputFile": "com.gpssimulator.app-mergeDebugResources-31:/values-tl/values-tl.xml",
             "map": [
                 {
                     "source": "/home/runner/.gradle/caches/transforms-3/dc9476a602b5d3ba85354d84722e4f01/transformed/appcompat-1.6.1/res/values-tl/values-tl.xml",
