@@ -33,21 +33,18 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 步驟一：專案環境淨化，但保留/恢復專案原始 UI 與邏輯 ====================
+    # ==================== 步驟一：專案環境淨化，還原原始 UI 與邏輯 ====================
     - name: Step 1 - Smart Purge & Restore Original UI Logic
       run: |
         cd gps-simulator-android
         set -e
         
-        # 1. 清理舊快取
         rm -rf .gradle build app/build || true
 
-        # 2. 備份原本解壓出來的真正原始碼與資源流（防止被覆蓋）
         mkdir -p /tmp/orig_src /tmp/orig_res
         cp -r app/src/main/java/* /tmp/orig_src/ 2>/dev/null || true
         cp -r app/src/main/res/* /tmp/orig_res/ 2>/dev/null || true
 
-        # 3. 重置乾淨且相容的 Gradle 配置
         rm -f build.gradle || true
         echo "plugins { id 'com.android.application' version '7.3.1' apply false; id 'org.jetbrains.kotlin.android' version '1.7.20' apply false }" > build.gradle
 
@@ -64,12 +61,10 @@ jobs:
         echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }; kotlinOptions { jvmTarget = '11' } }" >> app/build.gradle
         echo "dependencies { implementation 'androidx.core:core-ktx:1.9.0'; implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.8.0' }" >> app/build.gradle
 
-        # 4. 👑 靈魂回歸：把原本專案設計的精美 UI (XML) 與程式碼還原回去！
         mkdir -p app/src/main/java app/src/main/res
         cp -r /tmp/orig_res/* app/src/main/res/ 2>/dev/null || true
         cp -r /tmp/orig_src/* app/src/main/java/ 2>/dev/null || true
 
-        # 5. 防呆修復：如果原本專案漏了圖示導致編譯失敗，我們自動補上點陣圖
         mkdir -p app/src/main/res/values
         echo '<resources><string name="app_name">GPS Simulator</string></resources>' > app/src/main/res/values/strings.xml
         for dir in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
@@ -80,7 +75,6 @@ jobs:
           fi
         done
 
-        # 6. 確保 Manifest 宣告正確
         mkdir -p app/src/main
         echo '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" /><application android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:label="@string/app_name" android:roundIcon="@mipmap/ic_launcher_round" android:theme="@style/Theme.AppCompat.Light.NoActionBar"><activity android:name=".ui.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity><service android:name=".service.GPSSimulationService" android:exported="false" /></application></manifest>' > app/src/main/AndroidManifest.xml
         echo "✅ 原始 UI 與邏輯復原成功！"
@@ -92,7 +86,7 @@ jobs:
         gradle wrapper --gradle-version 7.5
         chmod +x gradlew
 
-    # ==================== 步驟三：最終編譯（附帶 AI 自動修補程式碼錯誤） ====================
+    # ==================== 步驟三：最終編譯（日誌解鎖 + AI 自動修補） ====================
     - name: Step 3 - Final Compile Production APK
       env:
         GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -108,17 +102,23 @@ jobs:
           echo "  🚀 開始第 $ATTEMPT 次嘗試編譯精美介面版 APK..."
           echo "========================================"
           
-          if ./gradlew clean assembleDebug --no-daemon --no-build-cache > build.log 2>&1; then
+          # 💡 重新加上 --info 參數，強行迫使 Kotlin Compiler 吐出真實的程式碼錯誤細節
+          if ./gradlew clean assembleDebug --no-daemon --no-build-cache --info > build.log 2>&1; then
             echo "✅ 恭喜！包含完整設計介面的專案已編譯成功！"
             BUILD_SUCCESS=true
             break
           else
-            echo "❌ 第 $ATTEMPT 次編譯失敗。正在分析原始碼衝突..."
-            grep -E -i -C 5 "error|exception|compile|failed" build.log | tail -n 100 > error3.log
+            echo "❌ 第 $ATTEMPT 次編譯失敗。正在提取隱藏的 Kotlin 核心日誌..."
+            
+            # 精準過濾出包含具體檔名、行數與錯誤訊息的日誌內容
+            grep -E -i -C 3 "e: |error|exception|failed" build.log | tail -n 120 > error3.log
+            
+            echo "====== 🩸 餵給 Gemini 的真實錯誤內容如下 ======"
             cat error3.log
+            echo "=============================================="
             
             PAYLOAD=$(jq -n --rawfile log error3.log '{
-              contents: [{ parts: [{ text: ("Android 專案原始碼編譯失敗，核心錯誤如下：\n" + $log + "\n\n請給出一行精準的 Linux 指令（如 sed 修正特定檔案程式碼或刪除重複宣告）來修正此錯誤。切記指令要有效，不可把程式碼插在 package 語句之前。") }] }],
+              contents: [{ parts: [{ text: ("Android 專案原始碼編譯失敗，核心錯誤日誌如下：\n" + $log + "\n\n請給出一行精準的 Linux 指令（如 sed 修正特定檔案程式碼或配置）來修正此錯誤。切記指令要有效，不可把程式碼插在 package 語句之前。") }] }],
               generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { patch_command: { type: "STRING" } }, required: ["patch_command"] } }
             }')
             
