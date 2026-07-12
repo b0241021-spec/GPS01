@@ -27,7 +27,6 @@ jobs:
         java-version: '11'
         distribution: 'temurin'
 
-    # 👑 關鍵修正 1：指定這個 Actions 插件的工作目錄在子資料夾
     - name: Setup Gradle 7.5
       uses: gradle/actions/setup-gradle@v3
       with:
@@ -50,7 +49,6 @@ jobs:
           cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_round.png
         done
 
-    # 👑 關鍵修正 2：只在正確包含 settings.gradle 的子目錄生成 Wrapper
     - name: Prepare Executable (Sub-folder Only)
       working-directory: ./gps-simulator-android
       run: |
@@ -88,7 +86,6 @@ jobs:
           fi
 
           if [ ! -f "./gradlew" ]; then
-            echo "⚠️ 原始碼中未檢出 gradlew，正在原地重新補件..."
             gradle wrapper --gradle-version 7.5
             chmod +x gradlew
           fi
@@ -100,11 +97,12 @@ jobs:
             break
           else
             echo "❌ 第 $ATTEMPT 次編譯失敗。正在擷取錯誤日誌..."
-            grep -B 3 -A 10 "e: " build.log > error.log || tail -n 50 build.log > error.log
+            # 👑 關鍵修正：拋棄不穩定的 grep 關鍵字過濾，直接抓最後 100 行完整日誌
+            tail -n 100 build.log > error.log
             
-            echo "--- 餵給 AI 的錯誤核心 ---"
+            echo "--- 餵給 AI 的完整錯誤日誌尾端 ---"
             cat error.log
-            echo "--------------------------"
+            echo "----------------------------------"
             
             MODELS=("gemini-3.5-flash" "gemini-3.1-flash-lite")
             RESPONSE=""
