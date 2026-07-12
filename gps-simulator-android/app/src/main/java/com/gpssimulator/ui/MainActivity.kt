@@ -1,118 +1,126 @@
 package com.gpssimulator.ui
 
 import android.Manifest
-import android.content.ComponentName
-import android.content.Context
-import android.content.Intent
-import android.content.ServiceConnection
+import android.content.*
 import android.content.pm.PackageManager
-import android.os.Build
-import android.os.Bundle
-import android.os.IBinder
-import android.text.Editable
-import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import androidx.appcompat.app.AlertDialog
+import android.os.*
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.lifecycleScope
 import com.gpssimulator.service.GPSSimulationService
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
-    private var simulationService: GPSSimulationService? = null
+    private var service: GPSSimulationService? = null
     private var isBound = false
 
-    private var capturedEditTexts = mutableListOf<EditText>()
-    private var capturedButtons = mutableListOf<View>()
+    private var etLat: EditText? = null
+    private var etLng: EditText? = null
+    private var tvCurrentGps: TextView? = null
+    private var sbSpeed: SeekBar? = null
+    private var sbDirection: SeekBar? = null
+    private var tvSpeedVal: TextView? = null
+    private var tvDirVal: TextView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        try {
-            val layoutId = resources.getIdentifier("activity_main", "layout", packageName)
-            if (layoutId != 0) setContentView(layoutId)
+        val layoutId = resources.getIdentifier("activity_main", "layout", packageName)
+        if (layoutId != 0) setContentView(layoutId)
 
-            // 1. 動態權限申請
-            val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) permissions.add(Manifest.permission.POST_NOTIFICATIONS)
-            if (permissions.any { ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }) {
-                ActivityCompat.requestPermissions(this, permissions.toTypedArray(), 100)
-            }
-
-            // 2. 🛡️ 雙重機制盲抓元件：先找畫面上所有的視圖，確保即便 ID 不符也能控到按鈕
-            val rootLayout = window.decorView.findViewById<ViewGroup>(android.R.id.content)
-            findAllViews(rootLayout)
-
-            // 3. 為畫面上抓到的第一個按鈕（通常是應用按鈕）綁定事件
-            val mainButton = capturedButtons.firstOrNull()
-            mainButton?.setOnClickListener {
-                try {
-                    val lat = capturedEditTexts.getOrNull(0)?.text?.toString()?.toDoubleOrNull() ?: 0.0
-                    val lng = capturedEditTexts.getOrNull(1)?.text?.toString()?.toDoubleOrNull() ?: 0.0
-                    
-                    simulationService?.setTargetLocation(lat, lng)
-                    
-                    AlertDialog.Builder(this)
-                        .setTitle("提示")
-                        .setMessage("位置已更新！請確認【開發者選項】中已將本 App 設為模擬位置應用。")
-                        .setPositiveButton("我知道了", null)
-                        .show()
-                } catch (ex: Exception) {
-                    ex.printStackTrace()
-                }
-            }
-
-            // 4. 啟動背景 Service
-            val intent = Intent(this, GPSSimulationService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
-            bindService(intent, connection, Context.BIND_AUTO_CREATE)
-
-        } catch (e: Exception) {
-            // 👑 終極防禦：就算 onCreate 發生任何預期外的錯誤，也絕對不讓 App 閃退！
-            e.printStackTrace()
+        val reqs = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) reqs.add(Manifest.permission.POST_NOTIFICATIONS)
+        if (reqs.any { ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }) {
+            ActivityCompat.requestPermissions(this, reqs.toTypedArray(), 101)
         }
+
+        etLat = findViewByNames("et_latitude", "etLatitude", "latitude_input", "lat")
+        etLng = findViewByNames("et_longitude", "etLongitude", "longitude_input", "lng")
+        tvCurrentGps = findViewByNames("tv_current_location", "currentLocationText", "tvCurrentGps", "location_display", "gps_status")
+        sbSpeed = findViewByNames("sb_speed", "speedSeekBar", "speed_bar", "seekBarSpeed")
+        sbDirection = findViewByNames("sb_direction", "directionSeekBar", "direction_bar", "seekBarDirection")
+        tvSpeedVal = findViewByNames("tv_speed_value", "speedValue", "speed_text")
+        tvDirVal = findViewByNames("tv_direction_value", "directionValue", "direction_text")
+        
+        val swView = findViewByNames<android.view.View>("switch_simulate", "simulateSwitch", "btn_simulate", "toggle_simulate", "mock_switch")
+        val btnTestView = findViewByNames<android.view.View>("btn_start_test", "startTestButton", "btn_test", "test_button", "start_test")
+
+        val seekListener = object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) { syncParamsFromUi() }
+            override fun onStartTrackingTouch(s: SeekBar?) {}
+            override fun onStopTrackingTouch(s: SeekBar?) {}
+        }
+        sbSpeed?.setOnSeekBarChangeListener(seekListener)
+        sbDirection?.setOnSeekBarChangeListener(seekListener)
+
+        if (swView is CompoundButton) {
+            swView.setOnCheckedChangeListener { _, isChecked -> service?.toggleSimulation(isChecked) }
+        } else {
+            swView?.setOnClickListener {
+                it.isSelected = !it.isSelected
+                service?.toggleSimulation(it.isSelected)
+            }
+        }
+
+        btnTestView?.setOnClickListener {
+            val currentStatus = service?.uiState?.value?.isTestRunning ?: false
+            service?.toggleTest(!currentStatus)
+            
+            val nextStatus = !currentStatus
+            etLat?.isEnabled = !nextStatus
+            etLng?.isEnabled = !nextStatus
+            sbSpeed?.isEnabled = !nextStatus
+            sbDirection?.isEnabled = !nextStatus
+            if (btnTestView is Button) {
+                btnTestView.text = if (nextStatus) "停止測試" else "開始測試"
+            }
+        }
+
+        val intent = Intent(this, GPSSimulationService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
+        bindService(intent, connection, Context.BIND_AUTO_CREATE)
     }
 
-    private fun findAllViews(view: View) {
-        if (view is EditText) {
-            capturedEditTexts.add(view)
-        } else if (view is Button || view.isClickable) {
-            capturedButtons.add(view)
-        }
-        if (view is ViewGroup) {
-            for (i in 0 until view.childCount) {
-                findAllViews(view.getChildAt(i))
-            }
-        }
+    private fun syncParamsFromUi() {
+        val lat = etLat?.text?.toString()?.toDoubleOrNull() ?: 25.0330
+        val lng = etLng?.text?.toString()?.toDoubleOrNull() ?: 121.5654
+        val speed = sbSpeed?.progress?.toFloat() ?: 0f
+        val dir = sbDirection?.progress ?: 0
+        
+        tvSpeedVal?.text = "${speed.toInt()} km/hr"
+        tvDirVal?.text = "$dir°"
+        service?.updateParams(lat, lng, speed, dir)
     }
 
     private val connection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            simulationService = (service as GPSSimulationService.LocalBinder).getService()
+        override fun onServiceConnected(n: ComponentName?, s: IBinder?) {
+            service = (s as GPSSimulationService.LocalBinder).getService()
             isBound = true
-            observeServiceState()
+            observeState()
         }
-        override fun onServiceDisconnected(name: ComponentName?) { isBound = false }
+        override fun onServiceDisconnected(n: ComponentName?) { isBound = false }
     }
 
-    private fun observeServiceState() {
+    private fun observeState() {
         lifecycleScope.launch {
-            try {
-                simulationService?.uiState?.collect { state ->
-                    capturedEditTexts.getOrNull(0)?.text = Editable.Factory.getInstance().newEditable(state.latitude.toString())
-                    capturedEditTexts.getOrNull(1)?.text = Editable.Factory.getInstance().newEditable(state.longitude.toString())
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
+            service?.uiState?.collect { state ->
+                val gpsFormattedText = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
+                tvCurrentGps?.text = gpsFormattedText
             }
         }
+    }
+
+    private fun <T : android.view.View> findViewByNames(vararg names: String): T? {
+        for (name in names) {
+            val id = resources.getIdentifier(name, "id", packageName)
+            if (id != 0) return findViewById(id)
+        }
+        return null
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        if (isBound) { try { unbindService(connection) } catch(e: Exception){} ; isBound = false }
+        if (isBound) { unbindService(connection); isBound = false }
     }
 }
