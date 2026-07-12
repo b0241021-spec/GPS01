@@ -2804,6 +2804,7 @@ id beginning
 id blocking
 id bottom
 id bounce
+id btnToggle
 id buttonPanel
 id cancel_button
 id center
@@ -3143,6 +3144,8 @@ id transition_position
 id transition_scene_layoutid_cache
 id transition_transform
 id triangle
+id tvStatus
+id tvTitle
 id unchecked
 id uniform
 id unlabeled
@@ -3266,6 +3269,7 @@ layout abc_search_dropdown_item_icons_2line
 layout abc_search_view
 layout abc_select_dialog_material
 layout abc_tooltip
+layout activity_main
 layout custom_dialog
 layout design_bottom_navigation_item
 layout design_bottom_sheet_dialog
