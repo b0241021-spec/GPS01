@@ -49,112 +49,55 @@ jobs:
           cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_round.png
         done
 
+    # 👑 核心大絕招：根據 Gemini 分析出的黃金情報，進行地毯式無痛修復
+    - name: Hard Fix Code Defect Base on Gemini Insight
+      working-directory: ./gps-simulator-android
+      run: |
+        TARGET_KT="app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
+        SERVICE_KT="app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt"
+        
+        echo "=== 🛠️ 開始執行全方位靜態代碼絕殺修復 ==="
+        
+        # 1. 強力清洗兩大檔案的頭部，幹掉所有重複衝突的 import
+        if [ -f "$TARGET_KT" ]; then
+          sed -i -n '/package com.gpssimulator/,$p' "$TARGET_KT"
+          sed -i '/package com.gpssimulator.ui/a \\nimport androidx.core.content.ContextCompat\nimport com.gpssimulator.service.GPSSimulationService\nimport androidx.appcompat.app.AlertDialog' "$TARGET_KT"
+          
+          # 修復 EditText .text 賦值問題
+          sed -i 's/\.text\s*=\s*Editable\.Factory\.getInstance()\.newEditable(\(.*\))/.setText(\1)/g' "$TARGET_KT" || true
+          sed -i 's/\.text\s*=\s*\(.*\)/.setText(\1)/g' "$TARGET_KT" || true
+          
+          # 解鎖 Android 13 權限低版本編譯相容
+          sed -i 's/Build\.VERSION_CODES\.TIRAMISU/33/g' "$TARGET_KT" || true
+          sed -i 's/Manifest\.permission\.POST_NOTIFICATIONS/"android.permission.POST_NOTIFICATIONS"/g' "$TARGET_KT" || true
+          
+          # 強制限定 AlertDialog 命名空間預防 lambda 崩潰
+          sed -i 's/\bAlertDialog\b/androidx.appcompat.app.AlertDialog/g' "$TARGET_KT" || true
+        fi
+        
+        if [ -f "$SERVICE_KT" ]; then
+          sed -i -n '/package com.gpssimulator/,$p' "$SERVICE_KT"
+          sed -i '/package com.gpssimulator.service/a \\nimport androidx.core.content.ContextCompat\nimport com.gpssimulator.R' "$SERVICE_KT"
+          
+          # 同步修復 Service 內可能存在的 Android 13 權限符號
+          sed -i 's/Build\.VERSION_CODES\.TIRAMISU/33/g' "$SERVICE_KT" || true
+          sed -i 's/Manifest\.permission\.POST_NOTIFICATIONS/"android.permission.POST_NOTIFICATIONS"/g' "$SERVICE_KT" || true
+        fi
+        
+        echo "=== ✅ 代碼缺陷修復完畢 ==="
+
     - name: Prepare Executable (Sub-folder Only)
       working-directory: ./gps-simulator-android
       run: |
-        echo "=== 🛡️ 開始在子目錄建立 Gradle 執行檔 ==="
         gradle wrapper --gradle-version 7.5
         chmod +x gradlew || true
-        echo "=== 🛡️ 執行檔建立完畢 ==="
 
-    - name: Build and Safe-Heal Loop with Gemini
-      env:
-        GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
-        API_URL: "https://generativelanguage.googleapis.com/v1beta/models"
+    # 直接送進去打包！
+    - name: Final Compile Production APK
+      working-directory: ./gps-simulator-android
       run: |
-        cd gps-simulator-android
-        MAX_ATTEMPTS=5
-        ATTEMPT=1
-        BUILD_SUCCESS=false
-
-        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-          echo "========================================"
-          echo "  🚀 開始第 $ATTEMPT 次嘗試編譯 APK..."
-          echo "========================================"
-          
-          # 每次編譯前，先進行結構保底清洗
-          TARGET_KT="app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
-          SERVICE_KT="app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt"
-          
-          if [ -f "$TARGET_KT" ]; then
-            sed -i -n '/package com.gpssimulator/,$p' "$TARGET_KT"
-            sed -i '/package com.gpssimulator.ui/a \\nimport androidx.core.content.ContextCompat\nimport com.gpssimulator.service.GPSSimulationService' "$TARGET_KT" || true
-          fi
-          if [ -f "$SERVICE_KT" ]; then
-            sed -i -n '/package com.gpssimulator/,$p' "$SERVICE_KT"
-            sed -i '/package com.gpssimulator.service/a \\nimport androidx.core.content.ContextCompat\nimport com.gpssimulator.R' "$SERVICE_KT" || true
-          fi
-
-          if [ ! -f "./gradlew" ]; then
-            gradle wrapper --gradle-version 7.5
-            chmod +x gradlew
-          fi
-
-          # 執行編譯
-          if ./gradlew assembleDebug --no-daemon > build.log 2>&1; then
-            echo "✅ 恭喜！第 $ATTEMPT 次編譯成功！"
-            BUILD_SUCCESS=true
-            break
-          else
-            echo "❌ 第 $ATTEMPT 次編譯失敗。正在擷取錯誤日誌..."
-            # 👑 關鍵修正：拋棄不穩定的 grep 關鍵字過濾，直接抓最後 100 行完整日誌
-            tail -n 100 build.log > error.log
-            
-            echo "--- 餵給 AI 的完整錯誤日誌尾端 ---"
-            cat error.log
-            echo "----------------------------------"
-            
-            MODELS=("gemini-3.5-flash" "gemini-3.1-flash-lite")
-            RESPONSE=""
-
-            for MODEL in "${MODELS[@]}"; do
-              PAYLOAD=$(jq -n --rawfile log error.log '{
-                contents: [{
-                  parts: [{
-                    text: ("你是一個 Android 專家。專案編譯發生以下錯誤：\n" + $log + "\n\n請給出一行精準的 Linux sed 指令來修正這個錯誤。注意：切勿在 package 語句之前插入程式碼。你的指令必須針對錯誤發生的具體檔案與程式碼行進行精準取代。")
-                  }]
-                }],
-                generationConfig: {
-                  responseMimeType: "application/json",
-                  responseSchema: {
-                    type: "OBJECT",
-                    properties: {
-                      explanation: { type: "STRING" },
-                      patch_command: { type: "STRING" }
-                    },
-                    required: ["patch_command"]
-                  }
-                }
-              }')
-
-              RESPONSE=$(curl -s -X POST "${API_URL}/${MODEL}:generateContent?key=${GEMINI_KEY}" \
-                -H "Content-Type: application/json" \
-                -d "$PAYLOAD")
-              break
-            done
-
-            RAW_CONTENT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' 2>/dev/null)
-            if [ ! -z "$RAW_CONTENT" ] && [ "$RAW_CONTENT" != "null" ]; then
-              CLEANED_CONTENT=$(echo "$RAW_CONTENT" | sed 's/```json//g; s/```//g')
-              EXPLANATION=$(echo "$CLEANED_CONTENT" | jq -r '.explanation' 2>/dev/null)
-              PATCH_COMMAND=$(echo "$CLEANED_CONTENT" | jq -r '.patch_command' 2>/dev/null)
-              
-              echo "💡 Gemini 分析: $EXPLANATION"
-              echo "⚙️ 執行 AI 修正: $PATCH_COMMAND"
-              
-              if [ ! -z "$PATCH_COMMAND" ] && [ "$PATCH_COMMAND" != "null" ]; then
-                eval "$PATCH_COMMAND" || true
-              fi
-            fi
-          fi
-          
-          ATTEMPT=$((ATTEMPT+1))
-          sleep 2
-        done
-
-        if [ "$BUILD_SUCCESS" = false ]; then
-          exit 1
-        fi
+        echo "🚀 開始最終編譯打包..."
+        ./gradlew assembleDebug --no-daemon
 
     - name: Verify APK Location
       if: success()
@@ -170,7 +113,7 @@ jobs:
         git config --global user.email "gemini-bot@github.com"
         git remote set-url origin https://x-access-token:${PERSONAL_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
         git add .
-        git commit -m "🤖 結構預修復成功並完成編譯 [skip ci]" || exit 0
+        git commit -m "🤖 根據 Gemini 智慧分析全量修復代碼並完工 [skip ci]" || exit 0
         git push --force
 
     - name: Upload APK Artifact
