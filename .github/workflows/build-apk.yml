@@ -86,7 +86,7 @@ jobs:
         gradle wrapper --gradle-version 7.5
         chmod +x gradlew
 
-    # ==================== 步驟三：最終編譯（日誌解鎖 + AI 自動修補） ====================
+    # ==================== 步驟三：最終編譯（地毯式日誌搜索 + AI 自動修補） ====================
     - name: Step 3 - Final Compile Production APK
       env:
         GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -102,23 +102,39 @@ jobs:
           echo "  🚀 開始第 $ATTEMPT 次嘗試編譯精美介面版 APK..."
           echo "========================================"
           
-          # 💡 重新加上 --info 參數，強行迫使 Kotlin Compiler 吐出真實的程式碼錯誤細節
-          if ./gradlew clean assembleDebug --no-daemon --no-build-cache --info > build.log 2>&1; then
+          if ./gradlew clean assembleDebug --no-daemon --no-build-cache > build.log 2>&1; then
             echo "✅ 恭喜！包含完整設計介面的專案已編譯成功！"
             BUILD_SUCCESS=true
             break
           else
-            echo "❌ 第 $ATTEMPT 次編譯失敗。正在提取隱藏的 Kotlin 核心日誌..."
+            echo "❌ 第 $ATTEMPT 次編譯失敗。啟動地毯式日誌搜索..."
             
-            # 精準過濾出包含具體檔名、行數與錯誤訊息的日誌內容
-            grep -E -i -C 3 "e: |error|exception|failed" build.log | tail -n 120 > error3.log
+            # 💡 核心必殺技：翻遍 build 目錄下所有的日誌與編譯報告檔，把真正含有 Kotlin 報錯的內容挖出來
+            rm -f error3.log || true
+            find . -type f -path "*/build/reports/*" -o -path "*/build/tmp/*" | while read -r logfile; do
+              if grep -q -E -i "error|exception|failed" "$logfile"; then
+                echo "=== 📄 發現核心報錯日誌檔案: $logfile ===" >> error3.log
+                tail -n 30 "$logfile" >> error3.log
+                echo "========================================" >> error3.log
+              fi
+            done
+            
+            # 如果臨時目錄沒撈到，就把 build.log 裡面含有 compiler 的上下文撈出來
+            if [ ! -s error3.log ]; then
+              grep -i -C 8 "compiler" build.log | tail -n 100 > error3.log
+            fi
+            
+            # 萬一還是空的，直接拿最後 100 行外層日誌墊底
+            if [ ! -s error3.log ]; then
+              tail -n 100 build.log > error3.log
+            fi
             
             echo "====== 🩸 餵給 Gemini 的真實錯誤內容如下 ======"
             cat error3.log
             echo "=============================================="
             
             PAYLOAD=$(jq -n --rawfile log error3.log '{
-              contents: [{ parts: [{ text: ("Android 專案原始碼編譯失敗，核心錯誤日誌如下：\n" + $log + "\n\n請給出一行精準的 Linux 指令（如 sed 修正特定檔案程式碼或配置）來修正此錯誤。切記指令要有效，不可把程式碼插在 package 語句之前。") }] }],
+              contents: [{ parts: [{ text: ("Android 專案原始碼編譯失敗，請分析以下撈出來的編譯日誌：\n" + $log + "\n\n請給出一行精準的 Linux 指令（如 sed 修正特定檔案程式碼、刪除出錯的過期語法檔案，或補上缺少的配置）來修正此錯誤。切記指令要有效，不可把程式碼插在 package 語句之前。") }] }],
               generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { patch_command: { type: "STRING" } }, required: ["patch_command"] } }
             }')
             
