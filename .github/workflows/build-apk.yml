@@ -33,20 +33,20 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 步驟一：精準清理衝突，保留並修正原廠核心環境 ====================
-    - name: Step 1 - Smart Clean & Retain Original Features
+    # ==================== 步驟一：精準環境配置（不做盲目代碼修改） ====================
+    - name: Step 1 - Clean & Setup Pure Environment
       run: |
         cd gps-simulator-android
         set -e
         
-        # 1. 清理舊快取
+        # 清理快取，保留原廠代碼
         rm -rf .gradle build app/build || true
         rm -rf src/main/java || true
 
-        # 關鍵診斷修復一：刪除與原廠 GPSSimulatorState 撞名的 SimulationState.kt 殘渣
+        # 刪除之前可能殘留的重複類別檔
         rm -f app/src/main/java/com/gpssimulator/data/SimulationState.kt || true
 
-        # 2. 重新配置根目錄環境
+        # 重新配置專案根目錄
         rm -f build.gradle || true
         echo "plugins { id 'com.android.application' version '7.3.1' apply false; id 'org.jetbrains.kotlin.android' version '1.7.20' apply false }" > build.gradle
 
@@ -58,15 +58,17 @@ jobs:
         echo "android.useAndroidX=true" > gradle.properties
         echo "android.enableJetifier=true" >> gradle.properties
 
-        # 3. 補上所有缺少的資源防禦圖檔
+        # 補齊所有可能的防禦資源圖檔 (滿足 R.drawable.ic_launcher_foreground 的編譯)
+        mkdir -p app/src/main/res/drawable
         for dir in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
           mkdir -p app/src/main/res/$dir
           echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > app/src/main/res/$dir/ic_launcher.png || true
           cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_round.png || true
           cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_foreground.png || true
         done
+        cp app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png app/src/main/res/drawable/ic_launcher_foreground.png || true
 
-        # 關鍵診斷修復二：大補帖式注入原廠功能所需的 Coroutines 與 Lifecycle KTX 依賴庫
+        # 重新生成 app/build.gradle，確保相容原廠環境
         rm -f app/build.gradle || true
         echo "plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }" > app/build.gradle
         echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }; kotlinOptions { jvmTarget = '11' } }" >> app/build.gradle
@@ -76,8 +78,6 @@ jobs:
             implementation 'androidx.core:core-ktx:1.9.0'
             implementation 'androidx.appcompat:appcompat:1.6.1'
             implementation 'com.google.android.material:material:1.8.0'
-            
-            // 原廠代碼核心依賴：解決 lifecycleScope 與 協程編譯報錯
             implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
             implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
             implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
@@ -85,7 +85,7 @@ jobs:
         }
         GROOVY
 
-        echo "✅ 原廠功能所需環境完美配置完畢！"
+        echo "✅ 原廠基礎環境配置完成！"
 
     # ==================== 步驟二：環境建置 ====================
     - name: Step 2 - Prepare Executable (Sub-folder Only)
@@ -94,7 +94,7 @@ jobs:
         gradle wrapper --gradle-version 7.5
         chmod +x gradlew
 
-    # ==================== 步驟三：最終編譯（附帶 AI 動態語法修正） ====================
+    # ==================== 步驟三：自動修復與編譯迴圈 ====================
     - name: Step 3 - Final Compile Production APK
       env:
         GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -115,15 +115,18 @@ jobs:
             BUILD_SUCCESS=true
             break
           else
-            echo "❌ 第 $ATTEMPT 次編譯失敗。正在提取原廠代碼的編譯錯誤..."
+            echo "❌ 第 $ATTEMPT 次編譯失敗。正在提取核心錯誤日誌..."
             
-            grep -E -i -C 5 "error|exception|compile|failed" build.log | tail -n 100 > error3.log
+            # 精準捕捉包含錯誤路徑與病因的日誌
+            grep -E -i -C 3 "error:" build.log | tail -n 100 > error3.log
+            
             echo "====== 🩸 餵給 Gemini 的真實錯誤內容如下 ======"
             cat error3.log
             echo "=============================================="
             
+            # 升級 AI Prompt：引導模型精準給出適合該錯誤的 Linux 修正指令 (例如 sed, echo 或覆蓋)
             PAYLOAD=$(jq -n --rawfile log error3.log '{
-              contents: [{ parts: [{ text: ("Android 專案編譯失敗，核心編譯錯誤日誌如下：\n" + $log + "\n\n請給出一行精準的 Linux 指令（例如修正特定檔案的代碼、格式、括號或配置）來解決此錯誤。切記指令要有效，不可把程式碼插在 package 語句之前。") }] }],
+              contents: [{ parts: [{ text: ("你是一個 Android 編譯修復專家。當前 Kotlin 專案編譯失敗，核心錯誤如下：\n" + $log + "\n\n請根據錯誤訊息（例如找不到參照、型態不符、缺少 import），給出一行可以在 Ubuntu 環境直接執行並修正該錯誤的 Linux 指令（如使用 sed 精準替換代碼，或是使用 echo 修正檔案）。請確保指令格式 100% 正確且能有效執行，不要夾帶任何 markdown 符號。") }] }],
               generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { patch_command: { type: "STRING" } }, required: ["patch_command"] } }
             }')
             
@@ -154,7 +157,7 @@ jobs:
         git config --global user.email "gemini-bot@github.com"
         git remote set-url origin https://x-access-token:${PERSONAL_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
         git add .
-        git commit -m "🤖 原廠完整功能版 APK 出貨完成！ [skip ci]" || exit 0
+        git commit -m "🤖 AI 自動語法修正版 APK 出貨完成！ [skip ci]" || exit 0
         git push --force
 
     - name: Upload APK Artifact
