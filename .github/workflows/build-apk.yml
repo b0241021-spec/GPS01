@@ -33,17 +33,20 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 步驟一：精準清理衝突，保留原廠核心功能 ====================
+    # ==================== 步驟一：精準清理衝突，保留並修正原廠核心環境 ====================
     - name: Step 1 - Smart Clean & Retain Original Features
       run: |
         cd gps-simulator-android
         set -e
         
-        # 清理快取，保留 app/src/main/java 原廠代碼
+        # 1. 清理舊快取
         rm -rf .gradle build app/build || true
         rm -rf src/main/java || true
 
-        # 覆蓋並修正最核心的根目錄環境配置
+        # 👑 關鍵診斷修復一：刪除與原廠 GPSSimulatorState 撞名的 SimulationState.kt 殘渣
+        rm -f app/src/main/java/com/gpssimulator/data/SimulationState.kt || true
+
+        # 2. 重新配置根目錄環境
         rm -f build.gradle || true
         echo "plugins { id 'com.android.application' version '7.3.1' apply false; id 'org.jetbrains.kotlin.android' version '1.7.20' apply false }" > build.gradle
 
@@ -55,13 +58,34 @@ jobs:
         echo "android.useAndroidX=true" > gradle.properties
         echo "android.enableJetifier=true" >> gradle.properties
 
-        # 修正 app/build.gradle
+        # 3. 補上所有缺少的資源防禦圖檔
+        for dir in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+          mkdir -p app/src/main/res/$dir
+          echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" | base64 -d > app/src/main/res/$dir/ic_launcher.png || true
+          cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_round.png || true
+          cp app/src/main/res/$dir/ic_launcher.png app/src/main/res/$dir/ic_launcher_foreground.png || true
+        done
+
+        # 👑 關鍵診斷修復二：大補帖式注入原廠功能所需的 Coroutines 與 Lifecycle KTX 依賴庫
         rm -f app/build.gradle || true
         echo "plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }" > app/build.gradle
         echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }; kotlinOptions { jvmTarget = '11' } }" >> app/build.gradle
-        echo "dependencies { implementation 'androidx.core:core-ktx:1.9.0'; implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.8.0' }" >> app/build.gradle
+        
+        cat << 'GROOVY' >> app/build.gradle
+        dependencies {
+            implementation 'androidx.core:core-ktx:1.9.0'
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+            implementation 'com.google.android.material:material:1.8.0'
+            
+            // 🚀 原廠代碼核心依賴：解決 lifecycleScope 與 協程編譯報錯
+            implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
+            implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
+            implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
+            implementation 'androidx.activity:activity-ktx:1.6.1'
+        }
+        GROOVY
 
-        echo "✅ 精準專案淨化完成！"
+        echo "✅ 原廠功能所需環境完美配置完畢！"
 
     # ==================== 步驟二：環境建置 ====================
     - name: Step 2 - Prepare Executable (Sub-folder Only)
@@ -70,14 +94,13 @@ jobs:
         gradle wrapper --gradle-version 7.5
         chmod +x gradlew
 
-    # ==================== 步驟三：最終編譯（補齊關鍵變數定義） ====================
+    # ==================== 步驟三：最終編譯（附帶 AI 動態語法修正） ====================
     - name: Step 3 - Final Compile Production APK
       env:
         GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
         API_URL: "https://generativelanguage.googleapis.com/v1beta/models"
       working-directory: ./gps-simulator-android
       run: |
-        # 👑 關鍵修正：確實定義變數，徹底消滅 unary operator expected 錯誤
         MAX_ATTEMPTS=5
         ATTEMPT=1
         BUILD_SUCCESS=false
@@ -104,7 +127,6 @@ jobs:
               generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { patch_command: { type: "STRING" } }, required: ["patch_command"] } }
             }')
             
-            # 使用官方正確標準模型路徑 gemini-1.5-flash
             RESPONSE=$(curl -s -X POST "${API_URL}/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}" -H "Content-Type: application/json" -d "$PAYLOAD")
             PATCH=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' | sed 's/```json//g; s/```//g' | jq -r '.patch_command' 2>/dev/null)
             
@@ -137,7 +159,7 @@ jobs:
 
     - name: Upload APK Artifact
       if: success()
-      uses: actions/upload-artifact@v4
+      uses: upload-artifact@v4
       with:
         name: Manus-GPS-Successful-APK
         path: "**/build/outputs/apk/debug/*.apk"
