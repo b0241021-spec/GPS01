@@ -33,365 +33,48 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 👑 關鍵修復：徹底清理舊的衝突檔案 ====================
-    - name: Step 1 - Clean Old Conflicting Files & Prepare Directories
+    - name: Step 1 - Eliminate Duplicated State File
       run: |
         cd gps-simulator-android
-        # 強制刪除舊的、可能導致重複定義的狀態檔案
+        # 直接刪除導致重複宣告 (Redeclaration) 的舊狀態檔案
         rm -f app/src/main/java/com/gpssimulator/data/GPSSimulatorState.kt || true
-        rm -f app/src/main/java/com/gpssimulator/data/SimulationState.kt || true
-        
-        # 重新建立乾淨的目錄結構
-        mkdir -p app/src/main/res/layout
-        mkdir -p app/src/main/java/com/gpssimulator/data
-        mkdir -p app/src/main/java/com/gpssimulator/service
-        mkdir -p app/src/main/java/com/gpssimulator/ui
+        echo "Successfully cleaned up old conflicting state files."
 
-    - name: Step 2 - Inject Custom Layout XML
+    - name: Step 2 - Fix UI Variable Typos via Linux Sed
       run: |
         cd gps-simulator-android
-        cat << 'EOF' > app/src/main/res/layout/activity_main.xml
-        <?xml version="1.0" encoding="utf-8"?>
-        <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:padding="16dp">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="GPS 模擬器 (真機修復版)"
-                    android:textSize="22sp"
-                    android:textStyle="bold"
-                    android:gravity="center"
-                    android:layout_marginBottom="24dp"/>
-                <TextView
-                    android:id="@+id/tvCustomCurrentGps"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="當前位置: 25.033000, 121.565400"
-                    android:textSize="16sp"
-                    android:textColor="#FF0000"
-                    android:layout_marginBottom="16dp" />
-                <EditText
-                    android:id="@+id/etCustomLat"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="25.0330"
-                    android:inputType="numberDecimal" />
-                <EditText
-                    android:id="@+id/etCustomLng"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="121.5654"
-                    android:inputType="numberDecimal"
-                    android:layout_marginBottom="16dp" />
-                <TextView
-                    android:id="@+id/tvCustomSpeedVal"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="模擬速度: 0 km/hr"
-                    android:textSize="14sp" />
-                <SeekBar
-                    android:id="@+id/sbCustomSpeed"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:max="20"
-                    android:progress="0"
-                    android:layout_marginBottom="16dp" />
-                <TextView
-                    android:id="@+id/tvCustomDirVal"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="模擬方向: 0°"
-                    android:textSize="14sp" />
-                <SeekBar
-                    android:id="@+id/sbCustomDirection"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:max="359"
-                    android:progress="0"
-                    android:layout_marginBottom="24dp" />
-                <CheckBox
-                    android:id="@+id/cbCustomSimulate"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="啟動 GPS 位置模擬"
-                    android:textSize="16sp"
-                    android:layout_marginBottom="16dp" />
-                <Button
-                    android:id="@+id/btnCustomTest"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="開始測試"
-                    android:textSize="16sp" />
-            </LinearLayout>
-        </ScrollView>
-        EOF
+        # 用 sed 直接修改 MainActivity.kt，把寫錯的 tvCustomCurrentGps 換成正確的 tvCurrentGps
+        # 同時確保所有 SimulationState 的欄位呼叫正確
+        find app/src/main/java -name "MainActivity.kt" -exec sed -i 's/tvCustomCurrentGps/tvCurrentGps/g' {} \;
+        echo "Successfully patched variable names in MainActivity."
 
-    - name: Step 3 - Inject SimulationState
+    - name: Step 3 - Patch Build Configs safely
       run: |
         cd gps-simulator-android
-        cat << 'EOF' > app/src/main/java/com/gpssimulator/data/SimulationState.kt
-        package com.gpssimulator.data
-        data class SimulationState(
-            val latitude: Double = 25.0330,
-            val longitude: Double = 121.5654,
-            val currentLatitude: Double = 25.0330,
-            val currentLongitude: Double = 121.5654,
-            val isSimulating: Boolean = false,
-            val speed: Float = 0f,
-            val direction: Int = 0,
-            val isTestRunning: Boolean = false
-        )
-        EOF
-
-    - name: Step 4 - Inject GPSSimulationService
-      run: |
-        cd gps-simulator-android
-        cat << 'EOF' > app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt
-        package com.gpssimulator.service
-        import android.app.NotificationChannel
-        import android.app.NotificationManager
-        import android.app.Service
-        import android.content.Context
-        import android.content.Intent
-        import android.location.Location
-        import android.location.LocationManager
-        import android.os.Binder
-        import android.os.Build
-        import android.os.IBinder
-        import android.os.SystemClock
-        import androidx.core.app.NotificationCompat
-        import com.gpssimulator.data.SimulationState
-        import kotlinx.coroutines.*
-        import kotlinx.coroutines.flow.MutableStateFlow
-        import kotlinx.coroutines.flow.StateFlow
-
-        class GPSSimulationService : Service() {
-            private val _uiState = MutableStateFlow(SimulationState())
-            val uiState: StateFlow<SimulationState> = _uiState
-            private var job: Job? = null
-            private val binder = LocalBinder()
-            inner class LocalBinder : Binder() { fun getService(): GPSSimulationService = this@GPSSimulationService }
-            override fun onBind(intent: Intent?): IBinder = binder
-
-            override fun onCreate() {
-                super.onCreate()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    val channel = NotificationChannel("gps_channel", "GPS Simulation", NotificationManager.IMPORTANCE_LOW)
-                    getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
-                }
-                val notification = NotificationCompat.Builder(this, "gps_channel")
-                    .setContentTitle("GPS Simulator Running")
-                    .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                    .build()
-                startForeground(1, notification)
-            }
-
-            fun updateParams(lat: Double, lng: Double, speed: Float, direction: Int) {
-                if (!_uiState.value.isSimulating) {
-                    _uiState.value = _uiState.value.copy(latitude = lat, longitude = lng, currentLatitude = lat, currentLongitude = lng, speed = speed, direction = direction)
-                } else {
-                    _uiState.value = _uiState.value.copy(latitude = lat, longitude = lng, speed = speed, direction = direction)
-                }
-            }
-
-            fun toggleSimulation(enable: Boolean) {
-                _uiState.value = _uiState.value.copy(isSimulating = enable)
-                if (enable) restartSimulationLoop() else job?.cancel()
-            }
-
-            fun toggleTest(enable: Boolean) {
-                _uiState.value = _uiState.value.copy(isTestRunning = enable)
-            }
-
-            private fun restartSimulationLoop() {
-                job?.cancel()
-                job = CoroutineScope(Dispatchers.IO).launch {
-                    while (isActive && _uiState.value.isSimulating) {
-                        val state = _uiState.value
-                        val r = 6378137.0
-                        val dn = (state.speed * (1000f / 3600f)) * Math.cos(Math.toRadians(state.direction.toDouble()))
-                        val de = (state.speed * (1000f / 3600f)) * Math.sin(Math.toRadians(state.direction.toDouble()))
-                        val dLat = dn / r
-                        val dLon = de / (r * Math.cos(Math.toRadians(state.latitude)))
-                        val newLat = state.currentLatitude + Math.toDegrees(dLat)
-                        val newLng = state.currentLongitude + Math.toDegrees(dLon)
-                        _uiState.value = _uiState.value.copy(currentLatitude = newLat, currentLongitude = newLng)
-                        try {
-                            val locMgr = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-                            val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
-                            for (p in providers) {
-                                try { locMgr.addTestProvider(p, false, false, false, false, true, true, true, 1, 2) } catch(e:Exception){}
-                                val mockLocation = Location(p).apply {
-                                    latitude = newLat
-                                    longitude = newLng
-                                    altitude = 0.0
-                                    time = System.currentTimeMillis()
-                                    elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
-                                    accuracy = 1.0f
-                                }
-                                locMgr.setTestProviderLocation(p, mockLocation)
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                        delay(1000)
-                    }
-                }
-            }
-            override fun onDestroy() { job?.cancel(); super.onDestroy() }
-        }
-        EOF
-
-    - name: Step 5 - Inject MainActivity (已修正變數名稱 tvCurrentGps)
-      run: |
-        cd gps-simulator-android
-        cat << 'EOF' > app/src/main/java/com/gpssimulator/ui/MainActivity.kt
-        package com.gpssimulator.ui
-        import android.Manifest
-        import android.content.*
-        import android.content.pm.PackageManager
-        import android.os.*
-        import android.widget.*
-        import androidx.appcompat.app.AppCompatActivity
-        import androidx.core.app.ActivityCompat
-        import androidx.lifecycle.lifecycleScope
-        import com.gpssimulator.service.GPSSimulationService
-        import kotlinx.coroutines.Dispatchers
-        import kotlinx.coroutines.flow.collect
-        import kotlinx.coroutines.launch
-        import kotlinx.coroutines.withContext
-        import com.gpssimulator.R
-
-        class MainActivity : AppCompatActivity() {
-            private var service: GPSSimulationService? = null
-            private var isBound = false
-            private lateinit var etLat: EditText
-            private lateinit var etLng: EditText
-            private lateinit var tvCurrentGps: TextView
-            private lateinit var sbSpeed: SeekBar
-            private lateinit var sbDirection: SeekBar
-            private lateinit var tvSpeedVal: TextView
-            private lateinit var tvDirVal: TextView
-            private lateinit var cbSimulate: CheckBox
-            private lateinit var btnTest: Button
-
-            override fun onCreate(savedInstanceState: Bundle?) {
-                super.onCreate(savedInstanceState)
-                setContentView(R.layout.activity_main)
-
-                val reqs = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) reqs.add(Manifest.permission.POST_NOTIFICATIONS)
-                if (reqs.any { ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }) {
-                    ActivityCompat.requestPermissions(this, reqs.toTypedArray(), 101)
-                }
-
-                etLat = findViewById(R.id.etCustomLat)
-                etLng = findViewById(R.id.etCustomLng)
-                tvCurrentGps = findViewById(R.id.tvCustomCurrentGps)
-                sbSpeed = findViewById(R.id.sbCustomSpeed)
-                sbDirection = findViewById(R.id.sbCustomDirection)
-                tvSpeedVal = findViewById(R.id.tvCustomSpeedVal)
-                tvDirVal = findViewById(R.id.tvCustomDirVal)
-                cbSimulate = findViewById(R.id.cbCustomSimulate)
-                btnTest = findViewById(R.id.btnCustomTest)
-
-                val seekListener = object : SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) {
-                        if (s == sbSpeed) tvSpeedVal.text = "模擬速度: $p km/hr"
-                        if (s == sbDirection) tvDirVal.text = "模擬方向: $p°"
-                        syncParamsFromUi()
-                    }
-                    override fun onStartTrackingTouch(s: SeekBar?) {}
-                    override fun onStopTrackingTouch(s: SeekBar?) {}
-                }
-                sbSpeed.setOnSeekBarChangeListener(seekListener)
-                sbDirection.setOnSeekBarChangeListener(seekListener)
-
-                cbSimulate.setOnCheckedChangeListener { _, isChecked ->
-                    syncParamsFromUi()
-                    service?.toggleSimulation(isChecked)
-                }
-
-                btnTest.setOnClickListener {
-                    val currentStatus = service?.uiState?.value?.isTestRunning ?: false
-                    val nextStatus = !currentStatus
-                    service?.toggleTest(nextStatus)
-                    etLat.isEnabled = !nextStatus
-                    etLng.isEnabled = !nextStatus
-                    sbSpeed.isEnabled = !nextStatus
-                    sbDirection.isEnabled = !nextStatus
-                    cbSimulate.isEnabled = !nextStatus
-                    btnTest.text = if (nextStatus) "停止測試 (已鎖定面板)" else "開始測試"
-                }
-
-                val intent = Intent(this, GPSSimulationService::class.java)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
-                bindService(intent, connection, Context.BIND_AUTO_CREATE)
-            }
-
-            private fun syncParamsFromUi() {
-                val lat = etLat.text.toString().toDoubleOrNull() ?: 25.0330
-                val lng = etLng.text.toString().toDoubleOrNull() ?: 121.5654
-                val speed = sbSpeed.progress.toFloat()
-                val dir = sbDirection.progress
-                service?.updateParams(lat, lng, speed, dir)
-            }
-
-            private val connection = object : ServiceConnection {
-                override fun onServiceConnected(n: ComponentName?, s: IBinder?) {
-                    service = (s as GPSSimulationService.LocalBinder).getService()
-                    isBound = true
-                    observeState()
-                }
-                override fun onServiceDisconnected(n: ComponentName?) { isBound = false }
-            }
-
-            private fun observeState() {
-                lifecycleScope.launch {
-                    service?.uiState?.collect { state ->
-                        withContext(Dispatchers.Main) {
-                            # 👑 這裡精準修復：將原先手誤的 tvCustomCurrentGps 修正為正確定義的 tvCurrentGps 變數
-                            tvCurrentGps.text = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
-                        }
-                    }
-                }
-            }
-            override fun onDestroy() { super.onDestroy(); if (isBound) { unbindService(connection); isBound = false } }
-        }
-        EOF
-
-    - name: Step 6 - Inject Build System Configs
-      run: |
-        cd gps-simulator-android
-        rm -f build.gradle settings.gradle app/build.gradle app/src/main/AndroidManifest.xml || true
-        
-        cat << 'EOF' > app/src/main/AndroidManifest.xml
-        <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.gpssimulator">
-            <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-            <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-            <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION" />
-            <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-            <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-            <application android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:label="GPS 真機修復版" android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
-                <activity android:name=".ui.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity>
-                <service android:name=".service.GPSSimulationService" android:enabled="true" android:exported="false" android:foregroundServiceType="location" />
-            </application>
-        </manifest>
-        EOF
-
+        # 強制覆寫 build.gradle 以免版本不合
         echo "plugins { id 'com.android.application' version '7.3.1' apply false; id 'org.jetbrains.kotlin.android' version '1.7.20' apply false }" > build.gradle
-        
-        cat << 'EOF' > settings.gradle
-        pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
-        dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
-        rootProject.name = 'GPSSimulator'; include ':app'
-        EOF
-        
-        echo "plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }" > app/build.gradle
-        echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility
+
+    - name: Step 4 - Create Gradle Wrapper
+      working-directory: ./gps-simulator-android
+      run: |
+        gradle wrapper --gradle-version 7.5
+        chmod +x gradlew
+
+    - name: Step 5 - Final Compile Production APK
+      working-directory: ./gps-simulator-android
+      run: |
+        ./gradlew clean assembleDebug --no-daemon --no-build-cache
+
+    - name: Step 6 - Export APK to Root Directory
+      run: |
+        mkdir -p output_apk
+        find . -name "*.apk" -exec cp {} ./output_apk/gps-simulator-debug.apk \;
+        echo "=== Exported APK File List: ==="
+        ls -l ./output_apk/
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Manus-GPS-Successful-APK
+        path: ./output_apk/gps-simulator-debug.apk
+        if-no-files-found: error
