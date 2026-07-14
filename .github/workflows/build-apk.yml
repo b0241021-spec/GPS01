@@ -33,7 +33,7 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 步驟一：100% 強制覆寫 UI 與邏輯，確保真機絕對對齊 ====================
+    # ==================== 步驟一：客製化高相容 UI 與邏輯寫入 ====================
     - name: Step 1 - Force Override Custom Layout & Logic
       run: |
         cd gps-simulator-android
@@ -46,19 +46,17 @@ jobs:
         mkdir -p app/src/main/java/com/gpssimulator/service
         mkdir -p app/src/main/java/com/gpssimulator/ui
 
-        # 👑 1. 強制寫入一個百分之百保證有正確 ID 的美觀 XML 佈局
+        # 1. 寫入客製化 XML 佈局
         cat << 'XML' > app/src/main/res/layout/activity_main.xml
         <?xml version="1.0" encoding="utf-8"?>
         <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:padding="16dp">
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
-
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -67,7 +65,6 @@ jobs:
                     android:textStyle="bold"
                     android:gravity="center"
                     android:layout_marginBottom="24dp"/>
-
                 <TextView
                     android:id="@+id/tvCustomCurrentGps"
                     android:layout_width="match_parent"
@@ -76,7 +73,6 @@ jobs:
                     android:textSize="16sp"
                     android:textColor="#FF0000"
                     android:layout_marginBottom="16dp" />
-
                 <EditText
                     android:id="@+id/etCustomLat"
                     android:layout_width="match_parent"
@@ -84,7 +80,6 @@ jobs:
                     android:hint="輸入緯度 (如 25.0330)"
                     android:text="25.0330"
                     android:inputType="numberDecimal" />
-
                 <EditText
                     android:id="@+id/etCustomLng"
                     android:layout_width="match_parent"
@@ -93,14 +88,12 @@ jobs:
                     android:text="121.5654"
                     android:inputType="numberDecimal"
                     android:layout_marginBottom="16dp" />
-
                 <TextView
                     android:id="@+id/tvCustomSpeedVal"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="模擬速度: 0 km/hr"
                     android:textSize="14sp" />
-
                 <SeekBar
                     android:id="@+id/sbCustomSpeed"
                     android:layout_width="match_parent"
@@ -108,14 +101,12 @@ jobs:
                     android:max="20"
                     android:progress="0"
                     android:layout_marginBottom="16dp" />
-
                 <TextView
                     android:id="@+id/tvCustomDirVal"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="模擬方向: 0°"
                     android:textSize="14sp" />
-
                 <SeekBar
                     android:id="@+id/sbCustomDirection"
                     android:layout_width="match_parent"
@@ -123,7 +114,6 @@ jobs:
                     android:max="359"
                     android:progress="0"
                     android:layout_marginBottom="24dp" />
-
                 <CheckBox
                     android:id="@+id/cbCustomSimulate"
                     android:layout_width="match_parent"
@@ -131,14 +121,12 @@ jobs:
                     android:text="啟動 GPS 位置模擬"
                     android:textSize="16sp"
                     android:layout_marginBottom="16dp" />
-
                 <Button
                     android:id="@+id/btnCustomTest"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="開始測試"
                     android:textSize="16sp" />
-
             </LinearLayout>
         </ScrollView>
         XML
@@ -202,7 +190,6 @@ jobs:
             }
 
             fun updateParams(lat: Double, lng: Double, speed: Float, direction: Int) {
-                // 如果目前還沒有開始前台移動模擬，則基礎定位點同步跟著輸入框走
                 if (!_uiState.value.isSimulating) {
                     _uiState.value = _uiState.value.copy(latitude = lat, longitude = lng, currentLatitude = lat, currentLongitude = lng, speed = speed, direction = direction)
                 } else {
@@ -224,8 +211,6 @@ jobs:
                 job = CoroutineScope(Dispatchers.IO).launch {
                     while (isActive && _uiState.value.isSimulating) {
                         val state = _uiState.value
-                        
-                        // 計算公式：依據速度 (km/hr) 與角度，計算每秒微幅偏移量
                         val r = 6378137.0
                         val dn = (state.speed * (1000f / 3600f)) * Math.cos(Math.toRadians(state.direction.toDouble()))
                         val de = (state.speed * (1000f / 3600f)) * Math.sin(Math.toRadians(state.direction.toDouble()))
@@ -237,7 +222,6 @@ jobs:
                         
                         _uiState.value = _uiState.value.copy(currentLatitude = newLat, currentLongitude = newLng)
                         
-                        // 灌入系統 Mock Location
                         try {
                             val locMgr = getSystemService(Context.LOCATION_SERVICE) as LocationManager
                             val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
@@ -265,7 +249,7 @@ jobs:
         }
         KOTLIN
 
-        # 4. 👑 注入 100% 精準對接自訂 XML 的 MainActivity (徹底絕殺控制項沒反應)
+        # 4. 注入精準綁定的 MainActivity
         cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/ui/MainActivity.kt
         package com.gpssimulator.ui
 
@@ -302,14 +286,12 @@ jobs:
                 super.onCreate(savedInstanceState)
                 setContentView(R.layout.activity_main)
 
-                // 權限核准
                 val reqs = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) reqs.add(Manifest.permission.POST_NOTIFICATIONS)
                 if (reqs.any { ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }) {
                     ActivityCompat.requestPermissions(this, reqs.toTypedArray(), 101)
                 }
 
-                // 👑 100% 絕對綁定，不使用盲抓，直接對齊我們客製化的 ID
                 etLat = findViewById(R.id.etCustomLat)
                 etLng = findViewById(R.id.etCustomLng)
                 tvCurrentGps = findViewById(R.id.tvCustomCurrentGps)
@@ -320,7 +302,6 @@ jobs:
                 cbSimulate = findViewById(R.id.cbCustomSimulate)
                 btnTest = findViewById(R.id.btnCustomTest)
 
-                // 滑塊即時更新事件
                 val seekListener = object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) {
                         if (s == sbSpeed) tvSpeedVal.text = "模擬速度: $p km/hr"
@@ -333,19 +314,16 @@ jobs:
                 sbSpeed.setOnSeekBarChangeListener(seekListener)
                 sbDirection.setOnSeekBarChangeListener(seekListener)
 
-                // 模擬位置開關
                 cbSimulate.setOnCheckedChangeListener { _, isChecked ->
                     syncParamsFromUi()
                     service?.toggleSimulation(isChecked)
                 }
 
-                // 開始測試按鈕事件 (實作 Disable 鎖定防呆功能)
                 btnTest.setOnClickListener {
                     val currentStatus = service?.uiState?.value?.isTestRunning ?: false
                     val nextStatus = !currentStatus
                     service?.toggleTest(nextStatus)
                     
-                    // 實作 Disable 功能：測試時鎖定所有輸入與滑塊
                     etLat.isEnabled = !nextStatus
                     etLng.isEnabled = !nextStatus
                     sbSpeed.isEnabled = !nextStatus
@@ -355,7 +333,6 @@ jobs:
                     btnTest.text = if (nextStatus) "停止測試 (已鎖定面板)" else "開始測試"
                 }
 
-                // 綁定前台服務
                 val intent = Intent(this, GPSSimulationService::class.java)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
                 bindService(intent, connection, Context.BIND_AUTO_CREATE)
@@ -382,8 +359,7 @@ jobs:
                 lifecycleScope.launch {
                     service?.uiState?.collect { state ->
                         withContext(Dispatchers.Main) {
-                            // 修正為小數點經緯度顯示
-                            tvCurrentGps.text = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
+                            tvCustomCurrentGps.text = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
                         }
                     }
                 }
@@ -393,30 +369,3 @@ jobs:
                 super.onDestroy()
                 if (isBound) { unbindService(connection); isBound = false }
             }
-        }
-        KOTLIN
-
-        # 5. 配置全域符合的 Android 環境
-        rm -f build.gradle settings.gradle app/build.gradle app/src/main/AndroidManifest.xml || true
-        cat << 'XML' > app/src/main/AndroidManifest.xml
-        <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.gpssimulator">
-            <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-            <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-            <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION" />
-            <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-            <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-            <application android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:label="GPS 真機修復版" android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
-                <activity android:name=".ui.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity>
-                <service android:name=".service.GPSSimulationService" android:enabled="true" android:exported="false" android:foregroundServiceType="location" />
-            </application>
-        </manifest>
-        XML
-
-        echo "plugins { id 'com.android.application' version '7.3.1' apply false; id 'org.jetbrains.kotlin.android' version '1.7.20' apply false }" > build.gradle
-        cat << 'GRADLE' > settings.gradle
-        pluginManagement { repositories { maven { url 'https://maven.aliyun.com/repository/public' }; maven { url 'https://maven.aliyun.com/repository/google' }; gradlePluginPortal(); google(); mavenCentral() } }
-        dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { maven { url 'https://maven.aliyun.com/repository/public' }; maven { url 'https://maven.aliyun.com/repository/google' }; google(); mavenCentral() } }
-        rootProject.name = 'GPSSimulator'; include ':app'
-        GRADLE
-        echo "plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }" > app/build.gradle
-        echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; buildFeatures { viewBinding false; dataBinding false }; compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }; kotlinOptions { jvmTarget = '11' } }" >> app/build.grad
