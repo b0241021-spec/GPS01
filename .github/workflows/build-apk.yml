@@ -33,37 +33,64 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 👑 核心修復：只刪除衝突檔案 ====================
-    - name: Step 1 - Eliminate Duplicated State File Only
+    # ==================== 👑 關鍵步驟：Python 智慧修復腳本 ====================
+    - name: Step 1 - Auto-Repair Kotlin Codes using Python
       run: |
-        cd gps-simulator-android
-        # 只刪除重複定義 (Redeclaration) 的 GPSSimulatorState.kt
-        rm -f app/src/main/java/com/gpssimulator/data/GPSSimulatorState.kt || true
-        echo "Cleaned up conflicting state file."
+        python3 -c "
+        import os
 
-    # ==================== 👑 核心修復：只修正 UI 筆誤 ====================
-    - name: Step 2 - Fix UI Variable Typos via Linux Sed
-      run: |
-        cd gps-simulator-android
-        # 將 MainActivity.kt 內誤植的 tvCustomCurrentGps 替換為正確定義的 tvCurrentGps
-        find app/src/main/java -name "MainActivity.kt" -exec sed -i 's/tvCustomCurrentGps/tvCurrentGps/g' {} \;
-        echo "Successfully patched MainActivity variable names."
+        # 1. 尋找 MainActivity.kt 進行精準修改
+        target_path = ''
+        for root, dirs, files in os.walk('.'):
+            if 'MainActivity.kt' in files:
+                target_path = os.path.join(root, 'MainActivity.kt')
+                break
+
+        if target_path:
+            print(f'Found MainActivity.kt at: {target_path}')
+            with open(target_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # 補上必要的 UI 套件 import
+            if 'import androidx.appcompat.app.AlertDialog' not in content:
+                content = content.replace('package com.gpssimulator.ui', 'package com.gpssimulator.ui\nimport androidx.appcompat.app.AlertDialog\nimport android.os.Build')
+                content = content.replace('package com.gpssimulator', 'package com.gpssimulator\nimport androidx.appcompat.app.AlertDialog\nimport android.os.Build')
+
+            # 修復 TIRAMISU 和 POST_NOTIFICATIONS 無法解析的問題（用反射與硬編碼數字安全繞過）
+            content = content.replace('Build.VERSION_CODES.TIRAMISU', '33')
+            content = content.replace('Manifest.permission.POST_NOTIFICATIONS', '\"android.permission.POST_NOTIFICATIONS\"')
+
+            # 修復 String 轉 Editable 型態不符的問題 (將 .text = \"xxx\" 改為 .setText(\"xxx\"))
+            # 這裡針對常見的 EditText 賦值進行安全過濾
+            content = content.replace('etCustomLat.text =', 'etCustomLat.setText(')
+            content = content.replace('etCustomLng.text =', 'etCustomLng.setText(')
+            # 如果有改為 setText，需要把結尾補上括號。為安全起見，直接使用最通用的取代：
+            # 先試圖把原本可能出錯的等號賦值換成 setText
+            import re
+            content = re.sub(r'(\w+)\.text\s*=\s*(.*?)\n', r'\1.setText(\2)\n', content)
+
+            with open(target_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            print('Successfully applied Python repair-patches to MainActivity.kt!')
+        else:
+            print('Error: MainActivity.kt not found!')
+        "
 
     # ==================== 建立 Gradle Wrapper ====================
-    - name: Step 3 - Create Gradle Wrapper
+    - name: Step 2 - Create Gradle Wrapper
       working-directory: ./gps-simulator-android
       run: |
         gradle wrapper --gradle-version 7.5
         chmod +x gradlew
 
     # ==================== 正式編譯 ====================
-    - name: Step 4 - Final Compile Production APK
+    - name: Step 3 - Final Compile Production APK
       working-directory: ./gps-simulator-android
       run: |
         ./gradlew clean assembleDebug --no-daemon --no-build-cache
 
     # ==================== 匯出並上傳 APK ====================
-    - name: Step 5 - Export APK to Root Directory
+    - name: Step 4 - Export APK to Root Directory
       run: |
         mkdir -p output_apk
         find . -name "*.apk" -exec cp {} ./output_apk/gps-simulator-debug.apk \;
