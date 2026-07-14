@@ -1,5 +1,4 @@
 package com.gpssimulator.ui
-import androidx.appcompat.app.AlertDialog
 
 import android.Manifest
 import android.content.Intent
@@ -79,12 +78,12 @@ class MainActivity : AppCompatActivity() {
             // 設定 currentLocationDisplay 為不可編輯
             currentLocationDisplay.isEnabled = false
             currentLocationDisplay.isFocusable = false
-            currentLocationDisplay.setText("25.0330, 121.5654")
+            currentLocationDisplay.text = "25.0330, 121.5654"
 
             // 設定 targetLocationInput 為可編輯
             targetLocationInput.isEnabled = true
             targetLocationInput.isFocusable = true
-            targetLocationInput.setText("25.0330, 121.5654")
+            targetLocationInput.text = "25.0330, 121.5654"
 
             // Direction Slider (0-359)
             directionSlider.max = 359
@@ -92,7 +91,7 @@ class MainActivity : AppCompatActivity() {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                     if (fromUser) {
                         stateManager.updateDirection(progress.toDouble())
-                        directionText.setText("方向: ${progress}°")
+                        directionText.text = "方向: ${progress}°"
                     }
                 }
                 override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -106,7 +105,7 @@ class MainActivity : AppCompatActivity() {
                     if (fromUser) {
                         val speed = progress / 10.0
                         stateManager.updateSpeed(speed)
-                        speedText.setText("速度: %.1f km/hr".format(speed))
+                        speedText.text = "速度: %.1f km/hr".format(speed)
                     }
                 }
                 override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -180,7 +179,7 @@ class MainActivity : AppCompatActivity() {
     private fun observeState() {
         try {
             lifecycleScope.launch {
-                stateManager.state.collect { state ->          
+                stateManager.state.collect { state ->
                     try {
                         currentLocationDisplay.setText("${state.currentLocation.latitude.format(6)}, ${state.currentLocation.longitude.format(6)}")
                         directionSlider.progress = state.direction.toInt()
@@ -188,7 +187,7 @@ class MainActivity : AppCompatActivity() {
                         simulationSwitch.isChecked = state.isSimulating
                         movingSwitch.isChecked = state.isMoving && state.isSimulating
 
-                        statusText.setText(state.statusMessage)
+                        statusText.text = state.statusMessage
                     } catch (e: Exception) {
                         LogManager.writeError("MainActivity", "observeState update failed", e)
                     }
@@ -262,13 +261,13 @@ class MainActivity : AppCompatActivity() {
                         // Move east 1000m
                         stateManager.updateDirection(90.0)
                         directionSlider.progress = 90
-                        statusText.setText("測試中: 第 ${cycle + 1}/3 週期，往正東移動...")
+                        statusText.text = "測試中: 第 ${cycle + 1}/3 週期，往正東移動..."
                         moveDistance(1000.0, 20.0)
 
                         // Move west 1000m
                         stateManager.updateDirection(270.0)
                         directionSlider.progress = 270
-                        statusText.setText("測試中: 第 ${cycle + 1}/3 週期，往正西移動...")
+                        statusText.text = "測試中: 第 ${cycle + 1}/3 週期，往正西移動..."
                         moveDistance(1000.0, 20.0)
                     }
 
@@ -305,7 +304,7 @@ class MainActivity : AppCompatActivity() {
             stateManager.stopSimulation()
             movingSwitch.isChecked = false
             simulationSwitch.isChecked = false
-            statusText.setText("已停止測試")
+            statusText.text = "已停止測試"
 
             showToast("移動模擬測試已停止，GPS 訊號已復原")
             LogManager.writeLog("Test running stopped")
@@ -328,8 +327,8 @@ class MainActivity : AppCompatActivity() {
                 permissions.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
             }
 
-            if (Build.VERSION.SDK_INT >= 33) {
-                permissions.add("android.permission.POST_NOTIFICATIONS")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                permissions.add(Manifest.permission.POST_NOTIFICATIONS)
             }
 
             val missingPermissions = permissions.filter {
