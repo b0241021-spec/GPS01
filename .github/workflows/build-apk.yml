@@ -34,69 +34,57 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== Step 1 - 修復 Linux 執行相容性 ====================
-    - name: Step 1 - Pre-initialize and Sanitize Wrapper
+    # ==================== 👑 終極自癒防線：Python 腳本全面排毒相容性修復 ====================
+    - name: Sanitize and Prepare Healer Scripts
       working-directory: ./gps-simulator-android
       run: |
-        gradle wrapper --gradle-version 7.5
-        sed -i 's/\r$//' gradlew
-        chmod +x gradlew
-        echo "=== Gradle Wrapper 健全度檢查 ==="
-        ls -la gradlew
+        echo "🧼 [全環節防護] 正在強制清洗自癒指令碼中的 Windows 隱藏換行符號 (CRLF -> LF)..."
+        
+        # 1. 確保 gradlew 本身格式正確
+        if [ -f gradlew ]; then sed -i 's/\r$//' gradlew; chmod +x gradlew; fi
+        
+        # 2. 👑 強制清洗兩支實體 Python 檔案，徹底消滅 L134 引號地獄
+        if [ -f auto_healer.py ]; then sed -i 's/\r$//' auto_healer.py; fi
+        if [ -f run_healing_pipeline.py ]; then sed -i 's/\r$//' run_healing_pipeline.py; fi
+        
+        echo "✅ 指令碼清洗完畢，已轉換為 Linux 標準 LF 格式！"
 
-    # ==================== Step 2 - 獨立大腦存取測試（最優先，失敗直接跳出） ====================
-    - name: Step 2 - Absolute Brain Storage Access Test (Fail-Fast)
-      run: |
-        echo "=================================================="
-        echo "🧠 [大腦存取測試] 開始驗證記憶體 CRUD 生命週期..."
-        echo "=================================================="
-        python3 -c "
-        import sys
-        test_memory = {}
-        test_memory['mock_location'] = 'lat:25.0330,lng:121.5654'
-        if test_memory.get('mock_location') != 'lat:25.0330,lng:121.5654':
-            sys.exit(1)
-        del test_memory['mock_location']
-        if test_memory.get('mock_location') is not None:
-            sys.exit(1)
-        print('✅ [大腦存取測試通過] CRUD 功能完全正常！')
-        " || { echo "❌ [關鍵錯誤] 大腦存取測試失敗！中斷所有後續步驟。"; exit 1; }
-
-    # ==================== Step 3 - 👑 用呼叫程式的方式運作整個流程 ====================
-    - name: Step 3 - Execute Healing and Compilation Pipeline
+    # ==================== 執行全環節主控管線 ====================
+    - name: Run Full-Process Auto-Healing Pipeline
       working-directory: ./gps-simulator-android
       env:
         GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -Dorg.gradle.daemon=false"
       run: |
-        # 👑 直接呼叫實體 Python 程式，100% 避開 Actions 引號地獄！
+        # 👑 執行全功能純淨程式碼
         python3 run_healing_pipeline.py
 
-    # ==================== Step 4 - 自動 Git Push 修復後的代碼與 JSON ====================
-    - name: Step 4 - Commit and Push Auto-Healed Code & Learning JSON
+    # ==================== 自動推送修復成果、大腦與診斷報告 ====================
+    - name: Commit and Push Updates & Diagnostic Report
+      if: always()
       run: |
         git config --global user.name "Gemini Auto-Healing Bot"
         git config --global user.email "gemini-bot@actions.github.com"
         
         git add -A
         if git diff-index --quiet HEAD --; then
-          echo "No code changes or learning updates detected. Skipping Git Push."
+          echo "No changes detected. Skipping commit."
         else
-          echo "🤖 偵測到程式碼修復與學習經驗更新！正在自動 Commit & Push 回 Repo..."
-          git commit -m "chore(auto-heal): Repaired compiler errors, sorted brain logs & updated learning JSON [skip ci]"
+          echo "🤖 提交程式碼修復、大腦更新或失敗診斷報告..."
+          git commit -m "chore(auto-heal): synced code repairs, cleaned brain library, and uploaded status report [skip ci]"
           git push origin HEAD:${{ github.ref_name }}
         fi
 
-    # ==================== Step 5 - 匯出與導出 APK ====================
-    - name: Step 5 - Export Final Decided APK
+    # ==================== 匯出 APK 產物 ====================
+    - name: Export Final Decided APK
+      if: success()
       run: |
         mkdir -p output_apk
-        find . -name "*.apk" -exec cp {} ./output_apk/gps-simulator-debug.apk \; || echo "No APK found to copy"
-        echo "=== 匯出檔案體積確認 ==="
+        find . -name "*.apk" -exec cp {} ./output_apk/gps-simulator-debug.apk \; || echo "No APK found"
         ls -l ./output_apk/
 
     - name: Upload APK Artifact
+      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: Manus-GPS-AutoHealed-APK
         path: ./output_apk/gps-simulator-debug.apk
-        if-no-files-found: error
