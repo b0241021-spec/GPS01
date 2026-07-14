@@ -19,14 +19,23 @@ Daemon will be stopped at the end of the build
 > Task :app:processDebugManifestForPackage UP-TO-DATE
 > Task :app:processDebugResources UP-TO-DATE
 
-> Task :app:compileDebugKotlin FAILED
+> Task :app:compileDebugKotlin
 e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/data/GPSSimulatorState.kt: (18, 7): Redeclaration: GPSSimulatorStateManager
 e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/data/GPSSimulatorStateManager.kt: (3, 8): Redeclaration: GPSSimulatorStateManager
-e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (125, 42): Unresolved reference: setTargetLocation
-e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (183, 36): This is an internal kotlinx.coroutines API that should not be used from outside of kotlinx.coroutines. No compatibility guarantees are provided. It is recommended to report your use-case of internal API to kotlinx.coroutines issue tracker, so stable API could be provided instead
-e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (183, 44): Type mismatch: inferred type is ([ERROR : <Unknown lambda parameter type>]) -> Unit but FlowCollector<SimulationState> was expected
-e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (183, 46): Cannot infer a type for this parameter. Please specify it explicitly.
-e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (255, 38): Unresolved reference: setTargetLocation
+e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (81, 43): Type mismatch: inferred type is String but Editable! was expected
+e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (86, 40): Type mismatch: inferred type is String but Editable! was expected
+e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (124, 42): Unresolved reference: setTargetLocation
+e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (182, 36): This is an internal kotlinx.coroutines API that should not be used from outside of kotlinx.coroutines. No compatibility guarantees are provided. It is recommended to report your use-case of internal API to kotlinx.coroutines issue tracker, so stable API could be provided instead
+e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (182, 44): Type mismatch: inferred type is ([ERROR : <Unknown lambda parameter type>]) -> Unit but FlowCollector<SimulationState> was expected
+e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (182, 46): Cannot infer a type for this parameter. Please specify it explicitly.
+e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (254, 38): Unresolved reference: setTargetLocation
+e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (330, 62): Unresolved reference: TIRAMISU
+e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (331, 53): Unresolved reference: POST_NOTIFICATIONS
+e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (369, 13): Unresolved reference: AlertDialog
+e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (372, 44): Cannot infer a type for this parameter. Please specify it explicitly.
+e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (372, 47): Cannot infer a type for this parameter. Please specify it explicitly.
+
+> Task :app:compileDebugKotlin FAILED
 
 FAILURE: Build failed with an exception.
 
@@ -47,5 +56,5 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 See https://docs.gradle.org/7.5/userguide/command_line_interface.html#sec:command_line_warnings
 
-BUILD FAILED in 17s
+BUILD FAILED in 16s
 14 actionable tasks: 1 executed, 13 up-to-date
