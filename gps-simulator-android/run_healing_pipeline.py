@@ -59,7 +59,7 @@ def save_detailed_report(success_cycle=None):
     report = f"# Gemini AI 運行狀況追蹤報告\n"
     report += f"產出時間: {datetime.datetime.now().isoformat()}\n"
     report += f"最終結果: {'🎉 成功通過' if success_cycle else '❌ 10輪皆失敗'}\n\n"
-    report += f"## 📂 大腦目前記錄內容\n```json\n{brain_content}\n```\n\n"
+    report += f"## 📂 大腦目前記錄內容 (包含每次修復軌跡)\n```json\n{brain_content}\n```\n\n"
     report += f"## 📝 最後一次 Gradle 編譯錯誤日誌\n```text\n{build_log}\n```\n"
     
     open(report_file, 'w', encoding='utf-8').write(report)
@@ -93,9 +93,31 @@ def main():
         except Exception:
             compile_status = 1
 
+        log_error = ""
+        if os.path.exists('gradle_build.log'):
+            log_error = open('gradle_build.log', 'r', encoding='utf-8', errors='ignore').read()[-4000:]
+
         if compile_status == 0:
             print(f'🎉 恭喜！第 {i} 輪專案編譯完美通過！')
             success = True
+            
+            try:
+                db = json.load(open(p_json, 'r', encoding='utf-8'))
+                run_log = {
+                    "cycle_attempt": i,
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "error_detected": "None (Compilation Succeeded!)",
+                    "prompt_fed_to_gemini": "None (Skipped, build passed)",
+                    "gemini_analysis": "None (Succeeded)",
+                    "gemini_suggested_code": open(target_file, 'r', encoding='utf-8', errors='ignore').read(),
+                    "result": "COMPILATION_PASSED"
+                }
+                db['auto_healing_runs'].append(run_log)
+                with open(p_json, 'w', encoding='utf-8') as f:
+                    json.dump(db, f, indent=2, ensure_ascii=False)
+            except:
+                pass
+                
             save_detailed_report(success_cycle=i)
             break
 
@@ -105,12 +127,13 @@ def main():
                 db = json.load(open(p_json, 'r', encoding='utf-8'))
                 if current_hash not in db['failed_code_hashes']:
                     db['failed_code_hashes'].append(current_hash)
-                    json.dump(db, open(p_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
+                    with open(p_json, 'w', encoding='utf-8') as f:
+                        json.dump(db, f, indent=2, ensure_ascii=False)
             except:
                 pass
 
         print(f'🚨 第 {i} 輪編譯失敗！召喚 Gemini 進行自癒...')
-        heal_code_with_ai(cycle=i, target_path=target_file)
+        heal_code_with_ai(cycle=i, target_path=target_file, log_error=log_error)
 
     if not success:
         save_detailed_report(None)
