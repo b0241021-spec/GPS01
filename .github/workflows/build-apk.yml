@@ -80,20 +80,14 @@ jobs:
         print('✅ [大腦存取測試通過] CRUD 功能完全正常！')
         " || { echo "❌ [關鍵錯誤] 大腦存取測試失敗！中斷所有後續步驟。"; exit 1; }
 
-    # ==================== Step 3 - 全步驟自癒與編譯循環 ====================
-    - name: Step 3 - Execute 10-Cycle Full-Process Auto-Healing Engine
+    # ==================== Step 3 - 用極度安全的 Python 直接生成自癒腳本檔 (避免 Bash 解析 Bug) ====================
+    - name: Step 3 - Generate Auto Healer Script Safely
       working-directory: ./gps-simulator-android
-      # 👑 設定全域環境變數，限制 Gradle 記憶體，防止 JVM 默默崩潰被系統殺掉 (OOM)
-      env:
-        GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -Dorg.gradle.daemon=false"
       run: |
-        echo "=== 🚀 啟動全步驟自癒診斷與編譯引擎 (最大嘗試 10 次) ==="
-        
-        # 1. 👑 建立獨立的 Python 自癒診斷腳本檔
-        cat << 'EOF' > auto_healer.py
-        import os, re, json, datetime, sys
+        python3 -c "
+        code = '''import os, re, json, datetime, sys
 
-        cycle = sys.argv[1] if len(sys.argv) > 1 else "1"
+        cycle = sys.argv[1] if len(sys.argv) > 1 else '1'
         p_json = '../gemini_learning_context.json'
         log_exists = os.path.exists('gradle_build.log')
         log_content = open('gradle_build.log', 'r', encoding='utf-8', errors='ignore').read() if log_exists else ''
@@ -107,14 +101,14 @@ jobs:
                 if f.endswith('.kt') and f != 'auto_healer.py':
                     p = os.path.join(root, f)
                     try:
-                        code = open(p, 'r', encoding='utf-8').read()
-                        if 'WindowManager.LayoutParams' in code and 'FLAG_NOT_FOCUSABLE' not in code:
+                        code_kt = open(p, 'r', encoding='utf-8').read()
+                        if 'WindowManager.LayoutParams' in code_kt and 'FLAG_NOT_FOCUSABLE' not in code_kt:
                             detected_errors.append('Screen Overlay Touch Blocked')
-                            code = code.replace(
+                            code_kt = code_kt.replace(
                                 'WindowManager.LayoutParams(',
-                                'WindowManager.LayoutParams(\n            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,\n            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,\n            '
+                                'WindowManager.LayoutParams(\\\\n            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,\\\\n            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,\\\\n            '
                             )
-                            open(p, 'w', encoding='utf-8').write(code)
+                            open(p, 'w', encoding='utf-8').write(code_kt)
                             actions_taken.append(f'Auto-repaired {p}: Configured WindowManager flags for Touch Passthrough.')
                     except Exception as e:
                         pass
@@ -122,7 +116,7 @@ jobs:
         # -------- 規則 0: 處理 gradlew 啟動即崩潰 --------
         if not log_exists or len(log_content.strip()) == 0:
             detected_errors.append('Gradlew Boot Crash')
-            os.system('sed -i "s/\r$//" gradlew')
+            os.system('sed -i \"s/\\\\r$//\" gradlew')
             os.system('chmod +x gradlew')
             actions_taken.append('Sanitized gradlew line endings and fixed execution permission.')
 
@@ -141,10 +135,10 @@ jobs:
                 for f in files:
                     if f == 'MainActivity.kt':
                         p = os.path.join(root, f)
-                        code = open(p, 'r', encoding='utf-8', errors='ignore').read()
-                        code = code.replace('Build.VERSION_CODES.TIRAMISU', '33')
-                        code = code.replace('Manifest.permission.POST_NOTIFICATIONS', '"android.permission.POST_NOTIFICATIONS"')
-                        open(p, 'w', encoding='utf-8').write(code)
+                        code_kt = open(p, 'r', encoding='utf-8', errors='ignore').read()
+                        code_kt = code_kt.replace('Build.VERSION_CODES.TIRAMISU', '33')
+                        code_kt = code_kt.replace('Manifest.permission.POST_NOTIFICATIONS', '\"android.permission.POST_NOTIFICATIONS\"')
+                        open(p, 'w', encoding='utf-8').write(code_kt)
                         actions_taken.append(f'Modified {p}: Downgraded Tiramisu references.')
 
         # -------- 規則 3: 解決 tvCustomCurrentGps 變數名拼寫錯誤 --------
@@ -154,9 +148,9 @@ jobs:
                 for f in files:
                     if f == 'MainActivity.kt':
                         p = os.path.join(root, f)
-                        code = open(p, 'r', encoding='utf-8', errors='ignore').read()
-                        code = code.replace('tvCustomCurrentGps', 'tvCurrentGps')
-                        open(p, 'w', encoding='utf-8').write(code)
+                        code_kt = open(p, 'r', encoding='utf-8', errors='ignore').read()
+                        code_kt = code_kt.replace('tvCustomCurrentGps', 'tvCurrentGps')
+                        open(p, 'w', encoding='utf-8').write(code_kt)
                         actions_taken.append(f'Modified {p}: Standardized UI variable to tvCurrentGps.')
 
         # -------- 規則 4: 解決 GPSSimulatorStateManager 遺失問題 --------
@@ -164,12 +158,12 @@ jobs:
             detected_errors.append('Unresolved reference: GPSSimulatorStateManager')
             os.makedirs('app/src/main/java/com/gpssimulator/data', exist_ok=True)
             p_mgr = 'app/src/main/java/com/gpssimulator/data/GPSSimulatorStateManager.kt'
-            manager_code = '''package com.gpssimulator.data
+            manager_code = \"\"\"package com.gpssimulator.data
             import com.gpssimulator.data.SimulationState
             object GPSSimulatorStateManager {
                 var state = SimulationState()
                 fun updateState(newState: SimulationState) { state = newState }
-            }'''
+            }\"\"\"
             open(p_mgr, 'w', encoding='utf-8').write(manager_code)
             actions_taken.append(f'Created fallback class: {p_mgr}')
 
@@ -206,19 +200,29 @@ jobs:
                 }
                 db['auto_healing_runs'].append(run_log)
                 json.dump(db, open(p_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
-                print(f'✅ [學習檔案更新] 成功寫入學習庫。行為: {actions_taken}')
+                print(f'✅ [學習檔案更新] 成功寫入學習庫。')
             except Exception as e:
                 print(f'❌ 寫入 JSON 學習庫失敗: {e}')
-        EOF
+        '''
+        open('auto_healer.py', 'w', encoding='utf-8').write(code)
+        print('✅ [自癒大腦腳本] auto_healer.py 安全生成完畢！')
+        "
 
-        # 2. 進入 10 次嘗試編譯與自癒循環
+    # ==================== Step 4 - 純粹的 10 次自癒編譯循環 ====================
+    - name: Step 4 - Execute 10-Cycle Full-Process Auto-Healing Engine
+      working-directory: ./gps-simulator-android
+      env:
+        GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -Dorg.gradle.daemon=false"
+      run: |
+        echo "=== 🚀 啟動自癒編譯引擎 (最大嘗試 10 次) ==="
+        
         for i in {1..10}; do
           echo ""
           echo "=================================================="
           echo "🔄 [第 $i / 10 次嘗試] 開始編譯專案..."
           echo "=================================================="
           
-          # 限制記憶體，且不使用背景 daemon 執行編譯
+          # 執行編譯
           ./gradlew assembleDebug --no-daemon --no-build-cache > gradle_build.log 2>&1
           COMPILE_STATUS=$?
           
@@ -241,11 +245,12 @@ jobs:
             break
           fi
           
-          # ==================== 🚨 升級：如果日誌是空的，代表是 JVM 級別的閃退，強制重跑並印出 Stacktrace ====================
+          # 如果沒有產生存檔，強制引導到 Stacktrace
           if [ ! -s gradle_build.log ]; then
-            echo "⚠️ 偵測到 Gradle 閃退且未留下日誌（可能是 JVM / 依賴加載崩潰）！"
-            echo "🔄 正在嘗試啟動「強光診斷模式」..."
+            echo "⚠️ 偵測到 Gradle 閃退且未留下日誌！"
+            echo "🔄 正在啟動強光診斷模式，直接在終端機輸出錯誤詳細資訊："
             ./gradlew assembleDebug --no-daemon --stacktrace --info
+            exit 1
           else
             echo "🚨 [第 $i 次嘗試] 編譯失敗！列印最後 80 行錯誤日誌："
             echo "------------------------------------------------------------"
@@ -253,7 +258,7 @@ jobs:
             echo "------------------------------------------------------------"
           fi
           
-          echo "🛠️ 啟動獨立自癒腳本進行診斷與自動修復..."
+          echo "🛠️ 執行已實體化之自癒大腦進行修復..."
           python3 auto_healer.py $i
           
           if [ $i -eq 10 ]; then
@@ -263,8 +268,8 @@ jobs:
           fi
         done
 
-    # ==================== Step 4 - 自動 Git Push 修復後的代碼與 JSON ====================
-    - name: Step 4 - Commit and Push Auto-Healed Code & Learning JSON
+    # ==================== Step 5 - 自動 Git Push 修復後的代碼與 JSON ====================
+    - name: Step 5 - Commit and Push Auto-Healed Code & Learning JSON
       run: |
         # 清除臨時生成的自癒輔助檔
         rm -f ./gps-simulator-android/auto_healer.py || true
@@ -281,8 +286,8 @@ jobs:
           git push origin HEAD:${{ github.ref_name }}
         fi
 
-    # ==================== Step 5 - 匯出與導出 APK ====================
-    - name: Step 5 - Export Final Decided APK
+    # ==================== Step 6 - 匯出與導出 APK ====================
+    - name: Step 6 - Export Final Decided APK
       run: |
         mkdir -p output_apk
         find . -name "*.apk" -exec cp {} ./output_apk/gps-simulator-debug.apk \; || echo "No APK found to copy"
