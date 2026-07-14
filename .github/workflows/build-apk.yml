@@ -207,8 +207,7 @@ jobs:
         open('auto_healer.py', 'w', encoding='utf-8').write(code)
         print('✅ [自癒大腦腳本] auto_healer.py 安全生成完畢！')
         "
-
-    # ==================== Step 4 - 純粹的 10 次自癒編譯循環 ====================
+# ==================== Step 4 - 純粹的 10 次自癒編譯循環 (使用 tee 確保即時曝光) ====================
     - name: Step 4 - Execute 10-Cycle Full-Process Auto-Healing Engine
       working-directory: ./gps-simulator-android
       env:
@@ -216,15 +215,20 @@ jobs:
       run: |
         echo "=== 🚀 啟動自癒編譯引擎 (最大嘗試 10 次) ==="
         
+        # 👑 預先檢查檔案與目錄狀態，防止幽靈路徑問題
+        echo "=== 當前工作目錄檔案列表 ==="
+        ls -la
+        
         for i in {1..10}; do
           echo ""
           echo "=================================================="
           echo "🔄 [第 $i / 10 次嘗試] 開始編譯專案..."
           echo "=================================================="
           
-          # 執行編譯
-          ./gradlew assembleDebug --no-daemon --no-build-cache > gradle_build.log 2>&1
-          COMPILE_STATUS=$?
+          # 👑 關鍵改變：使用 tee 命令！
+          # 這樣會同時將編譯進度即時印在 Github 畫面上，並同時寫入 gradle_build.log 供 Python 診斷！
+          ./gradlew assembleDebug --no-daemon --no-build-cache 2>&1 | tee gradle_build.log
+          COMPILE_STATUS=${PIPESTATUS[0]} # 獲取 gradlew 的真實結束狀態碼
           
           if [ $COMPILE_STATUS -eq 0 ]; then
             echo "🎉 恭喜！第 $i 次嘗試：專案編譯完美通過！"
@@ -245,25 +249,12 @@ jobs:
             break
           fi
           
-          # 如果沒有產生存檔，強制引導到 Stacktrace
-          if [ ! -s gradle_build.log ]; then
-            echo "⚠️ 偵測到 Gradle 閃退且未留下日誌！"
-            echo "🔄 正在啟動強光診斷模式，直接在終端機輸出錯誤詳細資訊："
-            ./gradlew assembleDebug --no-daemon --stacktrace --info
-            exit 1
-          else
-            echo "🚨 [第 $i 次嘗試] 編譯失敗！列印最後 80 行錯誤日誌："
-            echo "------------------------------------------------------------"
-            tail -n 80 gradle_build.log
-            echo "------------------------------------------------------------"
-          fi
-          
+          echo "🚨 [第 $i 次嘗試] 編譯失敗！"
           echo "🛠️ 執行已實體化之自癒大腦進行修復..."
           python3 auto_healer.py $i
           
           if [ $i -eq 10 ]; then
-            echo "❌ 已達到 10 次極限嘗試，列印完整錯誤日誌："
-            [ -f gradle_build.log ] && cat gradle_build.log
+            echo "❌ 已達到 10 次極限嘗試，編譯結束。"
             exit 1
           fi
         done
