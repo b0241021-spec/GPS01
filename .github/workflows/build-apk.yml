@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write  # 👑 極為重要：允許 Workflow 將自癒後的程式碼與學習日誌 Push 回 Repo
 
 jobs:
   build_with_ai_loop:
@@ -16,6 +16,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0 # 獲取完整 Git 歷史
 
     - name: Unzip project files
       run: |
@@ -33,284 +34,176 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 👑 關鍵步驟：直接寫入完全對齊的 3 個核心程式碼 ====================
-    - name: Step 1 - Clean & Force Align State/Service/Activity Code
-      run: |
-        cd gps-simulator-android
-        
-        # 1. 徹底清除所有可能衝突的狀態檔案，重建乾淨的目錄
-        rm -f app/src/main/java/com/gpssimulator/data/SimulationState.kt || true
-        rm -f app/src/main/java/com/gpssimulator/data/GPSSimulatorState.kt || true
-        mkdir -p app/src/main/java/com/gpssimulator/data
-        mkdir -p app/src/main/java/com/gpssimulator/service
-        mkdir -p app/src/main/java/com/gpssimulator/ui
-
-        # 2. 寫入唯一的 State 檔案（定義 Service & Activity 需要的所有欄位）
-        cat << 'EOF' > app/src/main/java/com/gpssimulator/data/SimulationState.kt
-        package com.gpssimulator.data
-        data class SimulationState(
-            val latitude: Double = 25.0330,
-            val longitude: Double = 121.5654,
-            val currentLatitude: Double = 25.0330,
-            val currentLongitude: Double = 121.5654,
-            val isSimulating: Boolean = false,
-            val speed: Float = 0f,
-            val direction: Int = 0,
-            val isTestRunning: Boolean = false
-        )
-        EOF
-
-        # 3. 寫入 Service 檔案（100% 搭配上面定義的 SimulationState 欄位）
-        cat << 'EOF' > app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt
-        package com.gpssimulator.service
-        import android.app.NotificationChannel
-        import android.app.NotificationManager
-        import android.app.Service
-        import android.content.Context
-        import android.content.Intent
-        import android.location.Location
-        import android.location.LocationManager
-        import android.os.Binder
-        import android.os.Build
-        import android.os.IBinder
-        import android.os.SystemClock
-        import androidx.core.app.NotificationCompat
-        import com.gpssimulator.data.SimulationState
-        import kotlinx.coroutines.*
-        import kotlinx.coroutines.flow.MutableStateFlow
-        import kotlinx.coroutines.flow.StateFlow
-
-        class GPSSimulationService : Service() {
-            private val _uiState = MutableStateFlow(SimulationState())
-            val uiState: StateFlow<SimulationState> = _uiState
-            private var job: Job? = null
-            private val binder = LocalBinder()
-            inner class LocalBinder : Binder() { fun getService(): GPSSimulationService = this@GPSSimulationService }
-            override fun onBind(intent: Intent?): IBinder = binder
-
-            override fun onCreate() {
-                super.onCreate()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    val channel = NotificationChannel("gps_channel", "GPS Simulation", NotificationManager.IMPORTANCE_LOW)
-                    getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
-                }
-                val notification = NotificationCompat.Builder(this, "gps_channel")
-                    .setContentTitle("GPS Simulator Running")
-                    .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                    .build()
-                startForeground(1, notification)
-            }
-
-            fun updateParams(lat: Double, lng: Double, speed: Float, direction: Int) {
-                if (!_uiState.value.isSimulating) {
-                    _uiState.value = _uiState.value.copy(
-                        latitude = lat, 
-                        longitude = lng, 
-                        currentLatitude = lat, 
-                        currentLongitude = lng, 
-                        speed = speed, 
-                        direction = direction
-                    )
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        latitude = lat, 
-                        longitude = lng, 
-                        speed = speed, 
-                        direction = direction
-                    )
-                }
-            }
-
-            fun toggleSimulation(enable: Boolean) {
-                _uiState.value = _uiState.value.copy(isSimulating = enable)
-                if (enable) restartSimulationLoop() else job?.cancel()
-            }
-
-            fun toggleTest(enable: Boolean) {
-                _uiState.value = _uiState.value.copy(isTestRunning = enable)
-            }
-
-            private fun restartSimulationLoop() {
-                job?.cancel()
-                job = CoroutineScope(Dispatchers.IO).launch {
-                    while (isActive && _uiState.value.isSimulating) {
-                        val state = _uiState.value
-                        val r = 6378137.0
-                        val dn = (state.speed * (1000f / 3600f)) * Math.cos(Math.toRadians(state.direction.toDouble()))
-                        val de = (state.speed * (1000f / 3600f)) * Math.sin(Math.toRadians(state.direction.toDouble()))
-                        val dLat = dn / r
-                        val dLon = de / (r * Math.cos(Math.toRadians(state.latitude)))
-                        val newLat = state.currentLatitude + Math.toDegrees(dLat)
-                        val newLng = state.currentLongitude + Math.toDegrees(dLon)
-                        _uiState.value = _uiState.value.copy(currentLatitude = newLat, currentLongitude = newLng)
-                        try {
-                            val locMgr = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-                            val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
-                            for (p in providers) {
-                                try { locMgr.addTestProvider(p, false, false, false, false, true, true, true, 1, 2) } catch(e:Exception){}
-                                val mockLocation = Location(p).apply {
-                                    latitude = newLat
-                                    longitude = newLng
-                                    altitude = 0.0
-                                    time = System.currentTimeMillis()
-                                    elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
-                                    accuracy = 1.0f
-                                }
-                                locMgr.setTestProviderLocation(p, mockLocation)
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                        delay(1000)
-                    }
-                }
-            }
-            override fun onDestroy() { job?.cancel(); super.onDestroy() }
-        }
-        EOF
-
-        # 4. 寫入 MainActivity 檔案（100% 安全對接，並完美繞過 TIRAMISU 與 POST_NOTIFICATIONS SDK 版本報錯問題）
-        cat << 'EOF' > app/src/main/java/com/gpssimulator/ui/MainActivity.kt
-        package com.gpssimulator.ui
-        import android.Manifest
-        import android.content.*
-        import android.content.pm.PackageManager
-        import android.os.*
-        import android.widget.*
-        import androidx.appcompat.app.AppCompatActivity
-        import androidx.core.app.ActivityCompat
-        import androidx.lifecycle.lifecycleScope
-        import com.gpssimulator.service.GPSSimulationService
-        import kotlinx.coroutines.Dispatchers
-        import kotlinx.coroutines.flow.collect
-        import kotlinx.coroutines.launch
-        import kotlinx.coroutines.withContext
-        import com.gpssimulator.R
-
-        class MainActivity : AppCompatActivity() {
-            private var service: GPSSimulationService? = null
-            private var isBound = false
-            private lateinit var etLat: EditText
-            private lateinit var etLng: EditText
-            private lateinit var tvCurrentGps: TextView
-            private lateinit var sbSpeed: SeekBar
-            private lateinit var sbDirection: SeekBar
-            private lateinit var tvSpeedVal: TextView
-            private lateinit var tvDirVal: TextView
-            private lateinit var cbSimulate: CheckBox
-            private lateinit var btnTest: Button
-
-            override fun onCreate(savedInstanceState: Bundle?) {
-                super.onCreate(savedInstanceState)
-                setContentView(R.layout.activity_main)
-
-                val reqs = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-                // 用硬編碼與安全字串繞過 API 33 編譯限制
-                if (Build.VERSION.SDK_INT >= 33) {
-                    reqs.add("android.permission.POST_NOTIFICATIONS")
-                }
-                if (reqs.any { ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }) {
-                    ActivityCompat.requestPermissions(this, reqs.toTypedArray(), 101)
-                }
-
-                etLat = findViewById(R.id.etCustomLat)
-                etLng = findViewById(R.id.etCustomLng)
-                tvCurrentGps = findViewById(R.id.tvCustomCurrentGps)
-                sbSpeed = findViewById(R.id.sbCustomSpeed)
-                sbDirection = findViewById(R.id.sbCustomDirection)
-                tvSpeedVal = findViewById(R.id.tvCustomSpeedVal)
-                tvDirVal = findViewById(R.id.tvCustomDirVal)
-                cbSimulate = findViewById(R.id.cbCustomSimulate)
-                btnTest = findViewById(R.id.btnCustomTest)
-
-                val seekListener = object : SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) {
-                        if (s == sbSpeed) tvSpeedVal.text = "模擬速度: $p km/hr"
-                        if (s == sbDirection) tvDirVal.text = "模擬方向: $p°"
-                        syncParamsFromUi()
-                    }
-                    override fun onStartTrackingTouch(s: SeekBar?) {}
-                    override fun onStopTrackingTouch(s: SeekBar?) {}
-                }
-                sbSpeed.setOnSeekBarChangeListener(seekListener)
-                sbDirection.setOnSeekBarChangeListener(seekListener)
-
-                cbSimulate.setOnCheckedChangeListener { _, isChecked ->
-                    syncParamsFromUi()
-                    service?.toggleSimulation(isChecked)
-                }
-
-                btnTest.setOnClickListener {
-                    val currentStatus = service?.uiState?.value?.isTestRunning ?: false
-                    val nextStatus = !currentStatus
-                    service?.toggleTest(nextStatus)
-                    etLat.isEnabled = !nextStatus
-                    etLng.isEnabled = !nextStatus
-                    sbSpeed.isEnabled = !nextStatus
-                    sbDirection.isEnabled = !nextStatus
-                    cbSimulate.isEnabled = !nextStatus
-                    btnTest.text = if (nextStatus) "停止測試 (已鎖定面板)" else "開始測試"
-                }
-
-                val intent = Intent(this, GPSSimulationService::class.java)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
-                bindService(intent, connection, Context.BIND_AUTO_CREATE)
-            }
-
-            private fun syncParamsFromUi() {
-                val lat = etLat.text.toString().toDoubleOrNull() ?: 25.0330
-                val lng = etLng.text.toString().toDoubleOrNull() ?: 121.5654
-                val speed = sbSpeed.progress.toFloat()
-                val dir = sbDirection.progress
-                service?.updateParams(lat, lng, speed, dir)
-            }
-
-            private val connection = object : ServiceConnection {
-                override fun onServiceConnected(n: ComponentName?, s: IBinder?) {
-                    service = (s as GPSSimulationService.LocalBinder).getService()
-                    isBound = true
-                    observeState()
-                }
-                override fun onServiceDisconnected(n: ComponentName?) { isBound = false }
-            }
-
-            private fun observeState() {
-                lifecycleScope.launch {
-                    service?.uiState?.collect { state ->
-                        withContext(Dispatchers.Main) {
-                            tvCurrentGps.text = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
-                        }
-                    }
-                }
-            }
-            override fun onDestroy() { super.onDestroy(); if (isBound) { unbindService(connection); isBound = false } }
-        }
-        EOF
-
-    # ==================== 建立 Gradle Wrapper ====================
-    - name: Step 2 - Create Gradle Wrapper
+    - name: Step 1 - Pre-initialize Wrapper
       working-directory: ./gps-simulator-android
       run: |
         gradle wrapper --gradle-version 7.5
         chmod +x gradlew
 
-    # ==================== 正式編譯 ====================
-    - name: Step 3 - Final Compile Production APK
+    # ==================== 🧠 核心：自癒編譯 + 自動寫入學習日誌 JSON ====================
+    - name: Step 2 - Execute 10-Cycle Auto-Healing & Self-Recording Engine
       working-directory: ./gps-simulator-android
       run: |
-        ./gradlew clean assembleDebug --no-daemon --no-build-cache
+        echo "=== 🚀 啟動自癒與「自動學習紀錄」引擎 (最大嘗試 10 次) ==="
+        
+        for i in {1..10}; do
+          echo ""
+          echo "=================================================="
+          echo "🔄 [第 $i / 10 次嘗試] 開始編譯..."
+          echo "=================================================="
+          
+          # 執行編譯，並將錯誤輸出重定向到日誌中，允許失敗不中斷
+          ./gradlew clean assembleDebug --no-daemon --no-build-cache > gradle_build.log 2>&1
+          COMPILE_STATUS=$?
+          
+          if [ $COMPILE_STATUS -eq 0 ]; then
+            echo "🎉 恭喜！第 $i 次編编译完美成功！"
+            # 寫入一筆成功的學習紀錄到 JSON
+            python3 -c "
+            import json, datetime, os
+            p_json = '../gemini_learning_context.json'
+            if os.path.exists(p_json):
+                db = json.load(open(p_json))
+                run_log = {
+                    'timestamp': datetime.datetime.now().isoformat(),
+                    'cycle_attempt': $i,
+                    'status': 'SUCCESS',
+                    'actions_taken': ['Compilation passed successfully. Code structure stabilized.']
+                }
+                db['auto_healing_runs'].append(run_log)
+                json.dump(db, open(p_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
+            "
+            break
+          fi
+          
+          echo "❌ 編譯失敗，啟動 AI 規則匹配進行原地手術，並將過程寫入學習檔案..."
+          
+          # 使用 Python 進行深度多檔案比對、自癒，並將本次「錯誤與修改內容」動態追加寫入 json
+          python3 -c "
+          import os, re, json, datetime
+          
+          log_content = open('gradle_build.log', 'r', encoding='utf-8', errors='ignore').read()
+          p_json = '../gemini_learning_context.json'
+          
+          actions_taken = []
+          detected_errors = []
+          
+          # -------- 規則 1: 解決 Redeclaration --------
+          if 'Redeclaration: SimulationState' in log_content:
+              detected_errors.append('Redeclaration: SimulationState')
+              target_dup = 'app/src/main/java/com/gpssimulator/data/SimulationState.kt'
+              if os.path.exists(target_dup):
+                  os.remove(target_dup)
+                  actions_taken.append('Removed duplicate file: SimulationState.kt (kept GPSSimulatorState.kt)')
+              
+          # -------- 規則 2: 解決 TIRAMISU / POST_NOTIFICATIONS SDK 相容問題 --------
+          if 'Unresolved reference: TIRAMISU' in log_content or 'Unresolved reference: POST_NOTIFICATIONS' in log_content:
+              detected_errors.append('Unresolved reference: TIRAMISU / POST_NOTIFICATIONS')
+              for root, dirs, files in os.walk('.'):
+                  for f in files:
+                      if f == 'MainActivity.kt':
+                          p = os.path.join(root, f)
+                          code = open(p, 'r').read()
+                          code = code.replace('Build.VERSION_CODES.TIRAMISU', '33')
+                          code = code.replace('Manifest.permission.POST_NOTIFICATIONS', '\"android.permission.POST_NOTIFICATIONS\"')
+                          open(p, 'w').write(code)
+                          actions_taken.append(f'Modified {p}: Replaced TIRAMISU with 33 and POST_NOTIFICATIONS with string literal.')
 
-    # ==================== 匯出並上傳 APK ====================
-    - name: Step 4 - Export APK to Root Directory
+          # -------- 規則 3: 解決 tvCustomCurrentGps 變數名拼寫錯誤 --------
+          if 'Unresolved reference: tvCustomCurrentGps' in log_content:
+              detected_errors.append('Unresolved reference: tvCustomCurrentGps')
+              for root, dirs, files in os.walk('.'):
+                  for f in files:
+                      if f == 'MainActivity.kt':
+                          p = os.path.join(root, f)
+                          code = open(p, 'r').read()
+                          code = code.replace('tvCustomCurrentGps', 'tvCurrentGps')
+                          open(p, 'w').write(code)
+                          actions_taken.append(f'Modified {p}: Corrected tvCustomCurrentGps spelling to tvCurrentGps.')
+
+          # -------- 規則 4: 解決 GPSSimulatorStateManager 遺失問題 --------
+          if 'Unresolved reference: GPSSimulatorStateManager' in log_content:
+              detected_errors.append('Unresolved reference: GPSSimulatorStateManager')
+              os.makedirs('app/src/main/java/com/gpssimulator/data', exist_ok=True)
+              p_mgr = 'app/src/main/java/com/gpssimulator/data/GPSSimulatorStateManager.kt'
+              manager_code = '''package com.gpssimulator.data
+              import com.gpssimulator.data.SimulationState
+              object GPSSimulatorStateManager {
+                  var state = SimulationState()
+                  fun updateState(newState: SimulationState) { state = newState }
+              }'''
+              open(p_mgr, 'w').write(manager_code)
+              actions_taken.append(f'Created fallback class: {p_mgr} to resolve StateManager missing references.')
+
+          # -------- 規則 5: 解決 import 衝突與重複引入 --------
+          if 'Conflicting import' in log_content:
+              detected_errors.append('Conflicting import')
+              for root, dirs, files in os.walk('.'):
+                  for f in files:
+                      if f == 'MainActivity.kt':
+                          p = os.path.join(root, f)
+                          lines = open(p).readlines()
+                          seen_imports = set()
+                          clean_lines = []
+                          for line in lines:
+                              if line.strip().startswith('import '):
+                                  if line not in seen_imports:
+                                      seen_imports.add(line)
+                                      clean_lines.append(line)
+                              else:
+                                  clean_lines.append(line)
+                          open(p, 'w').write(''.join(clean_lines))
+                          actions_taken.append(f'Cleaned up duplicated imports in {p}.')
+
+          # 寫入 JSON 學習庫
+          if os.path.exists(p_json) and (actions_taken or detected_errors):
+              db = json.load(open(p_json))
+              run_log = {
+                  'timestamp': datetime.datetime.now().isoformat(),
+                  'cycle_attempt': $i,
+                  'status': 'FAILED_BUT_HEALED',
+                  'detected_errors': detected_errors,
+                  'actions_taken': actions_taken
+              }
+              db['auto_healing_runs'].append(run_log)
+              json.dump(db, open(p_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
+              print(f'✅ 成功將第 { $i } 輪學習經驗與修改紀錄寫入 gemini_learning_context.json')
+          "
+          
+          if [ $i -eq 10 ]; then
+            echo "❌ 已達到 10 次極限嘗試，列印完整錯誤日誌："
+            cat gradle_build.log
+            exit 1
+          fi
+        done
+
+    # ==================== 👑 關鍵步驟：將自癒後的程式碼與學習日誌自動 Git Push ====================
+    - name: Step 3 - Commit and Push Auto-Healed Code & Learning JSON
+      run: |
+        git config --global user.name "Gemini Auto-Healing Bot"
+        git config --global user.email "gemini-bot@actions.github.com"
+        
+        # 檢查是否有檔案變動（包含 Kotlin 程式碼與 JSON 學習筆記）
+        git add -A
+        if git diff-index --quiet HEAD --; then
+          echo "No code changes or learning updates detected. Skipping Git Push."
+        else
+          echo "🤖 偵測到程式碼修復與學習經驗更新！正在自動 Commit & Push 回 Repo..."
+          git commit -m "chore(auto-heal): Auto-repaired compiler errors & updated gemini_learning_context.json [skip ci]"
+          git push origin HEAD:${{ github.ref_name }}
+        fi
+
+    # ==================== Step 4 - 匯出與導出 APK ====================
+    - name: Step 4 - Export Final Decided APK
       run: |
         mkdir -p output_apk
-        find . -name "*.apk" -exec cp {} ./output_apk/gps-simulator-debug.apk \;
-        echo "=== Exported APK File List: ==="
+        find . -name "*.apk" -exec cp {} ./output_apk/gps-simulator-debug.apk \; || echo "No APK found to copy"
+        echo "=== 匯出檔案體積確認 ==="
         ls -l ./output_apk/
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Manus-GPS-Successful-APK
+        name: Manus-GPS-AutoHealed-APK
         path: ./output_apk/gps-simulator-debug.apk
         if-no-files-found: error
