@@ -2,47 +2,54 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.gpssimulator"
     android:versionCode="1"
-    android:versionName="1.0" >
+    android:versionName="1.0.0" >
 
     <uses-sdk
-        android:minSdkVersion="24"
-        android:targetSdkVersion="33" />
+        android:minSdkVersion="21"
+        android:targetSdkVersion="31" />
 
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <permission
-        android:name="com.gpssimulator.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
-        android:protectionLevel="signature" />
-
-    <uses-permission android:name="com.gpssimulator.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
 
     <application
         android:allowBackup="true"
         android:appComponentFactory="androidx.core.app.CoreComponentFactory"
         android:debuggable="true"
-        android:extractNativeLibs="false"
         android:icon="@mipmap/ic_launcher"
-        android:label="GPS Simulator"
-        android:theme="@style/Theme.AppCompat.Light.DarkActionBar" >
+        android:label="@string/app_name"
+        android:requestLegacyExternalStorage="true"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.GPSSimulator"
+        android:usesCleartextTraffic="true" >
+        <service
+            android:name="com.gpssimulator.service.GPSSimulationService"
+            android:enabled="true"
+            android:exported="false" />
+
         <activity
             android:name="com.gpssimulator.ui.MainActivity"
-            android:exported="true" >
+            android:exported="true"
+            android:screenOrientation="portrait" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <service
-            android:name="com.gpssimulator.service.GPSSimulationService"
-            android:enabled="true"
+        <activity
+            android:name="com.google.android.gms.common.api.GoogleApiActivity"
             android:exported="false"
-            android:foregroundServiceType="location" />
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
 
         <provider
             android:name="androidx.startup.InitializationProvider"

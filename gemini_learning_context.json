@@ -33,5 +33,137 @@
       "solution": "檢查並請求 SYSTEM_ALERT_WINDOW 懸浮窗權限，並確保在建立觸控監聽懸浮視窗時，LayoutParams 包含 FLAG_NOT_FOCUSABLE 與 FLAG_NOT_TOUCH_MODAL 旗標以實現觸控穿透。"
     }
   ],
-  "auto_healing_runs": []
+  "auto_healing_runs": [
+    {
+      "timestamp": "2026-07-14T15:13:44.981099",
+      "cycle_attempt": 1,
+      "status": "FAILED_BUT_HEALED",
+      "detected_errors": [
+        "Redeclaration: SimulationState",
+        "Unresolved reference: TIRAMISU / POST_NOTIFICATIONS",
+        "Type mismatch: String to Editable",
+        "Unresolved reference: setTargetLocation",
+        "Unresolved reference: AlertDialog",
+        "Coroutines FlowCollector Lambda Error",
+        "Unresolved reference: GPSSimulatorStateManager"
+      ],
+      "actions_taken": [
+        "Removed duplicate file: SimulationState.kt",
+        "Modified ./app/src/main/java/com/gpssimulator/ui/MainActivity.kt: Downgraded Tiramisu references.",
+        "Auto-repaired ./app/src/main/java/com/gpssimulator/ui/MainActivity.kt: Replaced .text direct assignment with .setText()",
+        "Added import androidx.appcompat.app.AlertDialog in ./app/src/main/java/com/gpssimulator/ui/MainActivity.kt",
+        "Standardized Flow.collect lambda parameters in ./app/src/main/java/com/gpssimulator/ui/MainActivity.kt",
+        "Created fallback class: app/src/main/java/com/gpssimulator/data/GPSSimulatorStateManager.kt"
+      ]
+    },
+    {
+      "timestamp": "2026-07-14T15:14:01.274346",
+      "cycle_attempt": 2,
+      "status": "FAILED_BUT_HEALED",
+      "detected_errors": [
+        "Unresolved reference: setTargetLocation",
+        "Coroutines FlowCollector Lambda Error"
+      ],
+      "actions_taken": [
+        "Standardized Flow.collect lambda parameters in ./app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
+      ]
+    },
+    {
+      "timestamp": "2026-07-14T15:14:17.255101",
+      "cycle_attempt": 3,
+      "status": "FAILED_BUT_HEALED",
+      "detected_errors": [
+        "Unresolved reference: setTargetLocation",
+        "Coroutines FlowCollector Lambda Error"
+      ],
+      "actions_taken": [
+        "Standardized Flow.collect lambda parameters in ./app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
+      ]
+    },
+    {
+      "timestamp": "2026-07-14T15:14:33.434842",
+      "cycle_attempt": 4,
+      "status": "FAILED_BUT_HEALED",
+      "detected_errors": [
+        "Unresolved reference: setTargetLocation",
+        "Coroutines FlowCollector Lambda Error"
+      ],
+      "actions_taken": [
+        "Standardized Flow.collect lambda parameters in ./app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
+      ]
+    },
+    {
+      "timestamp": "2026-07-14T15:14:49.773633",
+      "cycle_attempt": 5,
+      "status": "FAILED_BUT_HEALED",
+      "detected_errors": [
+        "Unresolved reference: setTargetLocation",
+        "Coroutines FlowCollector Lambda Error"
+      ],
+      "actions_taken": [
+        "Standardized Flow.collect lambda parameters in ./app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
+      ]
+    },
+    {
+      "timestamp": "2026-07-14T15:15:07.388523",
+      "cycle_attempt": 6,
+      "status": "FAILED_BUT_HEALED",
+      "detected_errors": [
+        "Unresolved reference: setTargetLocation",
+        "Coroutines FlowCollector Lambda Error"
+      ],
+      "actions_taken": [
+        "Standardized Flow.collect lambda parameters in ./app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
+      ]
+    },
+    {
+      "timestamp": "2026-07-14T15:15:25.026893",
+      "cycle_attempt": 7,
+      "status": "FAILED_BUT_HEALED",
+      "detected_errors": [
+        "Unresolved reference: setTargetLocation",
+        "Coroutines FlowCollector Lambda Error"
+      ],
+      "actions_taken": [
+        "Standardized Flow.collect lambda parameters in ./app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
+      ]
+    },
+    {
+      "timestamp": "2026-07-14T15:15:42.547847",
+      "cycle_attempt": 8,
+      "status": "FAILED_BUT_HEALED",
+      "detected_errors": [
+        "Unresolved reference: setTargetLocation",
+        "Coroutines FlowCollector Lambda Error"
+      ],
+      "actions_taken": [
+        "Standardized Flow.collect lambda parameters in ./app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
+      ]
+    },
+    {
+      "timestamp": "2026-07-14T15:16:00.020378",
+      "cycle_attempt": 9,
+      "status": "FAILED_BUT_HEALED",
+      "detected_errors": [
+        "Unresolved reference: setTargetLocation",
+        "Coroutines FlowCollector Lambda Error"
+      ],
+      "actions_taken": [
+        "Standardized Flow.collect lambda parameters in ./app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
+      ]
+    },
+    {
+      "timestamp": "2026-07-14T15:16:17.670282",
+      "cycle_attempt": 10,
+      "status": "FAILED_BUT_HEALED",
+      "detected_errors": [
+        "Unresolved reference: setTargetLocation",
+        "Coroutines FlowCollector Lambda Error"
+      ],
+      "actions_taken": [
+        "Standardized Flow.collect lambda parameters in ./app/src/main/java/com/gpssimulator/ui/MainActivity.kt"
+      ]
+    }
+  ],
+  "last_health_check": "2026-07-14T15:12:14.446541"
 }

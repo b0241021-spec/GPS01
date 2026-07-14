@@ -1,6 +1,6 @@
 [
     {
-        "merged": "com.gpssimulator.app-mergeDebugResources-33:/layout/activity_main.xml",
-        "source": "com.gpssimulator.app-main-36:/layout/activity_main.xml"
+        "merged": "/home/runner/work/GPS01/GPS01/gps-simulator-android/app/build/intermediates/incremental/mergeDebugResources/stripped.dir/layout/activity_main.xml",
+        "source": "/home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/res/layout/activity_main.xml"
     }
 ]

@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.gpssimulator.app-mergeDebugResources-32:/values-h320dp-port-v13/values-h320dp-port-v13.xml",
+            "outputFile": "/home/runner/work/GPS01/GPS01/gps-simulator-android/app/build/intermediates/incremental/mergeDebugResources/merged.dir/values-h320dp-port-v13/values-h320dp-port-v13.xml",
             "map": [
                 {
-                    "source": "/home/runner/.gradle/caches/transforms-3/8227a840a1ec88e56dd9ed198fd96794/transformed/material-1.8.0/res/values-h320dp-port-v13/values-h320dp-port-v13.xml",
+                    "source": "/home/runner/.gradle/caches/transforms-3/241726933caf4db3c567bbb2c168a481/transformed/material-1.5.0/res/values-h320dp-port-v13/values-h320dp-port-v13.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",
