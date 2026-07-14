@@ -33,9 +33,15 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    - name: Step 1 - Prepare Directories
+    # ==================== 👑 關鍵修復：徹底清理舊的衝突檔案 ====================
+    - name: Step 1 - Clean Old Conflicting Files & Prepare Directories
       run: |
         cd gps-simulator-android
+        # 強制刪除舊的、可能導致重複定義的狀態檔案
+        rm -f app/src/main/java/com/gpssimulator/data/GPSSimulatorState.kt || true
+        rm -f app/src/main/java/com/gpssimulator/data/SimulationState.kt || true
+        
+        # 重新建立乾淨的目錄結構
         mkdir -p app/src/main/res/layout
         mkdir -p app/src/main/java/com/gpssimulator/data
         mkdir -p app/src/main/java/com/gpssimulator/service
@@ -242,7 +248,7 @@ jobs:
         }
         EOF
 
-    - name: Step 5 - Inject MainActivity
+    - name: Step 5 - Inject MainActivity (已修正變數名稱 tvCurrentGps)
       run: |
         cd gps-simulator-android
         cat << 'EOF' > app/src/main/java/com/gpssimulator/ui/MainActivity.kt
@@ -350,7 +356,8 @@ jobs:
                 lifecycleScope.launch {
                     service?.uiState?.collect { state ->
                         withContext(Dispatchers.Main) {
-                            tvCustomCurrentGps.text = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
+                            # 👑 這裡精準修復：將原先手誤的 tvCustomCurrentGps 修正為正確定義的 tvCurrentGps 變數
+                            tvCurrentGps.text = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
                         }
                     }
                 }
@@ -378,7 +385,6 @@ jobs:
         </manifest>
         EOF
 
-        # 👑 這裡精準修復：將漏掉的引號確實補上，改用單引號封裝防止 shell 展開
         echo "plugins { id 'com.android.application' version '7.3.1' apply false; id 'org.jetbrains.kotlin.android' version '1.7.20' apply false }" > build.gradle
         
         cat << 'EOF' > settings.gradle
@@ -388,21 +394,4 @@ jobs:
         EOF
         
         echo "plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }" > app/build.gradle
-        echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }; kotlinOptions { jvmTarget = '11' } }" >> app/build.gradle
-        echo "dependencies { implementation 'androidx.core:core-ktx:1.9.0'; implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.8.0'; implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'; implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'; implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1' }" >> app/build.gradle
-
-    - name: Step 7 - Create Gradle Wrapper
-      working-directory: ./gps-simulator-android
-      run: |
-        gradle wrapper --gradle-version 7.5
-        chmod +x gradlew
-
-    - name: Step 8 - Final Compile Production APK
-      working-directory: ./gps-simulator-android
-      run: |
-        ./gradlew clean assembleDebug --no-daemon --no-build-cache
-
-    - name: Step 9 - Export APK to Root Directory
-      run: |
-        mkdir -p output_apk
-        find . -name "*.apk" -exec cp {} ./output_apk/gps-simulator-d
+        echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility
