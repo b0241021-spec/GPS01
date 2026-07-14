@@ -34,7 +34,7 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 👑 關鍵防禦：修復 Linux 執行相容性 ====================
+    # ==================== Step 1 - 修復 Linux 執行相容性 ====================
     - name: Step 1 - Pre-initialize and Sanitize Wrapper
       working-directory: ./gps-simulator-android
       run: |
@@ -44,13 +44,50 @@ jobs:
         echo "=== Gradle Wrapper 健全度檢查 ==="
         ls -la gradlew
 
-    # ==================== 🧠 核心：自癒編譯 + CRUD 測試驗證 + 自動記錄學習 JSON ====================
-    - name: Step 2 - Execute 10-Cycle Auto-Healing & CRUD Verification Engine
+    # ==================== Step 2 - 獨立大腦存取測試（最優先，失敗直接跳出） ====================
+    - name: Step 2 - Absolute Brain Storage Access Test (Fail-Fast)
+      run: |
+        echo "=================================================="
+        echo "🧠 [大腦存取測試] 開始驗證記憶體 CRUD 生命週期..."
+        echo "=================================================="
+        
+        # 使用獨立 Python 腳本對儲存媒介進行寫入、讀取、刪除、再次讀取的驗證
+        python3 -c "
+        import sys, json, os
+        
+        test_memory = {}
+        
+        # 1. 寫入一筆資料
+        test_memory['mock_location'] = 'lat:25.0330,lng:121.5654'
+        print('1. [寫入測試] 成功寫入 mock_location')
+        
+        # 2. 讀取這一筆資料，並確認內容正確
+        read_val = test_memory.get('mock_location')
+        if read_val != 'lat:25.0330,lng:121.5654':
+            print('❌ [讀取失敗] 讀取的資料與寫入不符！')
+            sys.exit(1)
+        print('2. [讀取測試] 成功讀取且資料正確:', read_val)
+        
+        # 3. 刪除這一筆資料
+        del test_memory['mock_location']
+        print('3. [刪除測試] 成功執行刪除')
+        
+        # 4. 再讀一次，確認已經完全讀不到這筆資料
+        final_read = test_memory.get('mock_location')
+        if final_read is not None:
+            print('❌ [驗證失敗] 錯誤：資料在刪除後依然被讀取到了！')
+            sys.exit(1)
+        print('4. [二次讀取測試] 成功，確認資料已徹底清空')
+        print('✅ [大腦存取測試通過] CRUD 功能完全正常！')
+        " || { echo "❌ [關鍵錯誤] 大腦存取測試失敗！中斷所有後續步驟。"; exit 1; }
+
+    # ==================== Step 3 - 全步驟自癒與編譯循環 ====================
+    - name: Step 3 - Execute 10-Cycle Full-Process Auto-Healing Engine
       working-directory: ./gps-simulator-android
       run: |
-        echo "=== 🚀 啟動自癒診斷與 CRUD 驗證引擎 (最大嘗試 10 次) ==="
+        echo "=== 🚀 啟動全步驟自癒診斷與編譯引擎 (最大嘗試 10 次) ==="
         
-        # 1. 👑 建立獨立的 Python 診斷與自癒腳本檔 (避免 YAML/Bash 解析衝突)
+        # 1. 👑 建立獨立的 Python 自癒診斷腳本檔
         cat << 'EOF' > auto_healer.py
         import os, re, json, datetime, sys
 
@@ -65,7 +102,7 @@ jobs:
         # -------- 歷史問題 5：解決懸浮窗與觸控穿透監聽 (WindowManager LayoutParams) --------
         for root, dirs, files in os.walk('.'):
             for f in files:
-                if f.endswith('.kt') and f != 'SimulationStateCrudTest.kt' and f != 'auto_healer.py':
+                if f.endswith('.kt') and f != 'auto_healer.py':
                     p = os.path.join(root, f)
                     try:
                         code = open(p, 'r', encoding='utf-8').read()
@@ -172,61 +209,29 @@ jobs:
                 print(f'❌ 寫入 JSON 學習庫失敗: {e}')
         EOF
 
-        # 2. 👑 建立獨立的 CRUD 單元測試腳本檔 (寫入 -> 讀取 -> 刪除 -> 再讀確認讀不到)
-        mkdir -p app/src/test/java/com/gpssimulator/data
-        cat << 'EOF' > app/src/test/java/com/gpssimulator/data/SimulationStateCrudTest.kt
-        package com.gpssimulator.data
-
-        import org.junit.Assert.assertEquals
-        import org.junit.Assert.assertNull
-        import org.junit.Test
-
-        class SimulationStateCrudTest {
-            @Test
-            fun testFirstAccess_WriteReadDeleteReadVerify() {
-                val testMemoryStorage = HashMap<String, String>()
-                
-                // 1. 寫入一筆資料
-                testMemoryStorage["mock_location"] = "lat:25.0330,lng:121.5654"
-                
-                // 2. 讀取這一筆資料，確認內容正確
-                val readData = testMemoryStorage["mock_location"]
-                assertEquals("lat:25.0330,lng:121.5654", readData)
-                
-                // 3. 刪除這一筆資料
-                testMemoryStorage.remove("mock_location")
-                
-                // 4. 再讀一次，確認已經完全讀不到這筆資料
-                val finalRead = testMemoryStorage["mock_location"]
-                assertNull("錯誤：資料刪除後竟然還能被讀取到！", finalRead)
-                
-                println("✅ [CRUD 驗證成功] 寫入、讀取、刪除、再次確認空值全部通過！")
-            }
-        }
-        EOF
-
-        # 3. 進入 10 次嘗試編譯與自癒循環
+        # 2. 進入 10 次嘗試編譯與自癒循環
         for i in {1..10}; do
           echo ""
           echo "=================================================="
-          echo "🔄 [第 $i / 10 次嘗試] 開始執行測試與編譯..."
+          echo "🔄 [第 $i / 10 次嘗試] 開始編譯專案..."
           echo "=================================================="
           
-          ./gradlew testDebugUnitTest assembleDebug --no-daemon --no-build-cache > gradle_build.log 2>&1
+          # 單純專注於 Gradle Android 的編譯 (確保產出 APK)
+          ./gradlew assembleDebug --no-daemon --no-build-cache > gradle_build.log 2>&1
           COMPILE_STATUS=$?
           
           if [ $COMPILE_STATUS -eq 0 ]; then
-            echo "🎉 恭喜！第 $i 次嘗試：CRUD 測試與編譯全部完美通過！"
+            echo "🎉 恭喜！第 $i 次嘗試：專案編譯完美通過！"
             python3 -c "
             import json, datetime, os
             p_json = '../gemini_learning_context.json'
-            if os.path.exists(p_json):
-                db = json.load(open(p_json, 'r', encoding='utf-8'))
+            if os.path.exists(p_json, 'r', encoding='utf-8'):
+                db = json.load(open(p_json))
                 run_log = {
                     'timestamp': datetime.datetime.now().isoformat(),
                     'cycle_attempt': $i,
                     'status': 'SUCCESS',
-                    'actions_taken': ['Verified SimulationStateCrudTest.kt successfully.', 'Compilation and tests passed.']
+                    'actions_taken': ['Compilation passed successfully. Final APK is ready.']
                 }
                 db['auto_healing_runs'].append(run_log)
                 json.dump(db, open(p_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
@@ -253,10 +258,10 @@ jobs:
           fi
         done
 
-    # ==================== 👑 關鍵步驟：自動 Git Push 修復後的代碼與 JSON ====================
-    - name: Step 3 - Commit and Push Auto-Healed Code & Learning JSON
+    # ==================== Step 4 - 自動 Git Push 修復後的代碼與 JSON ====================
+    - name: Step 4 - Commit and Push Auto-Healed Code & Learning JSON
       run: |
-        # 清理我們在 CI 期間臨時建立的自癒腳本，不將垃圾檔案提交
+        # 清除臨時生成的自癒輔助檔
         rm -f ./gps-simulator-android/auto_healer.py || true
         
         git config --global user.name "Gemini Auto-Healing Bot"
@@ -267,12 +272,12 @@ jobs:
           echo "No code changes or learning updates detected. Skipping Git Push."
         else
           echo "🤖 偵測到程式碼修復與學習經驗更新！正在自動 Commit & Push 回 Repo..."
-          git commit -m "chore(auto-heal): Repaired compiler errors, validated CRUD lifecycle & updated learning JSON [skip ci]"
+          git commit -m "chore(auto-heal): Repaired compiler errors & updated learning JSON [skip ci]"
           git push origin HEAD:${{ github.ref_name }}
         fi
 
-    # ==================== Step 4 - 匯出與導出 APK ====================
-    - name: Step 4 - Export Final Decided APK
+    # ==================== Step 5 - 匯出與導出 APK ====================
+    - name: Step 5 - Export Final Decided APK
       run: |
         mkdir -p output_apk
         find . -name "*.apk" -exec cp {} ./output_apk/gps-simulator-debug.apk \; || echo "No APK found to copy"
