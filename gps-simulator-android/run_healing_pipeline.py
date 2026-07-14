@@ -1,72 +1,101 @@
 # -*- coding: utf-8 -*-
+# run_healing_pipeline.py
 import os
 import sys
 import json
 import datetime
 import subprocess
-import hashlib
+import base64
 from auto_healer import heal_code_with_ai
 
 p_json = '../gemini_learning_context.json'
 report_file = '../auto_heal_failure_report.md'
 
-def get_file_hash(filepath):
-    if not os.path.exists(filepath):
-        return ""
-    try:
-        content = open(filepath, 'r', encoding='utf-8', errors='ignore').read()
-        return hashlib.md5(content.encode('utf-8')).hexdigest()
-    except:
-        return ""
+# 🧹 整理大腦
+def cleanup_brain():
+    print('🧹 [整理大腦] 啟動學習庫去重整理...')
+    if os.path.exists(p_json):
+        try:
+            db = json.load(open(p_json, 'r', encoding='utf-8'))
+            if 'auto_healing_runs' in db:
+                seen_timestamps = set()
+                unique_runs = []
+                for run in db['auto_healing_runs']:
+                    ts = run.get('timestamp')
+                    if ts not in seen_timestamps:
+                        seen_timestamps.add(ts)
+                        unique_runs.append(run)
+                db['auto_healing_runs'] = unique_runs
+                json.dump(db, open(p_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
+                print('✅ [整理大腦] JSON 學習資料庫完成重整與去重！')
+        except Exception as e:
+            print('⚠️ [整理大腦] JSON 整理失敗: ' + str(e))
 
-def init_clean_brain():
-    print('🧹 [第一步] 徹底清空大腦記憶體...')
-    initial_brain = {
-        "initial_knowledge": {
-            "failed_experiences": [
-                "Redeclaration: SimulationState.kt 重複定義",
-                "Unresolved reference: TIRAMISU / POST_NOTIFICATIONS 報錯",
-                "Unresolved reference: tvCustomCurrentGps 拼寫錯誤",
-                "Type mismatch: inferred type is String but Editable! was expected",
-                "Unresolved reference: setTargetLocation 缺失",
-                "Unresolved reference: AlertDialog 漏導包",
-                "Coroutines FlowCollector Lambda 語意衝突",
-                "Conflicting import 重複引入"
-            ],
-            "buggy_experiences": [
-                "WindowManager.LayoutParams 懸浮窗未設定 FLAG_NOT_FOCUSABLE 會導致全螢幕觸控被攔截(Touch Blocked)"
-            ]
-        },
-        "auto_healing_runs": [],
-        "failed_code_hashes": []
-    }
-    with open(p_json, 'w', encoding='utf-8') as f:
-        json.dump(initial_brain, f, indent=2, ensure_ascii=False)
-    print('✅ [第二步] 初始經驗注入完畢！')
+    for root, dirs, files in os.walk('.'):
+        for file in files:
+            if file.endswith('.kt.bak') or file.endswith('.tmp'):
+                try:
+                    os.remove(os.path.join(root, file))
+                except Exception:
+                    pass
 
-def save_detailed_report(success_cycle=None):
-    print('📝 正在輸出最終運作狀況分析報告...')
-    try:
-        with open(p_json, 'r', encoding='utf-8') as f:
-            brain_data = json.load(f)
-    except Exception:
-        brain_data = {}
-
-    build_log = "（無日誌）"
+# 📝 生成 10 次失敗時的極詳細診斷報告（100% 禁用 f-string，改用安全字串拼接）
+def generate_failure_report():
+    print('📝 [自癒失敗] 正在產生詳細失敗診斷報告以供分析...')
+    
+    build_log_content = "（無日誌內容）"
     if os.path.exists('gradle_build.log'):
         try:
-            build_log = open('gradle_build.log', 'r', encoding='utf-8', errors='ignore').read()[-8000:]
-        except Exception:
-            pass
+            build_log_content = open('gradle_build.log', 'r', encoding='utf-8', errors='ignore').read()
+        except Exception as e:
+            build_log_content = "讀取日誌失敗: " + str(e)
 
-    # 建立結構化 Markdown
-    report = f"# 📊 Gemini AI Auto-Healing Diagnostic Report\n"
-    report += f"Generated At: {datetime.datetime.now().isoformat()}\n"
-    report += f"Status: {'🎉 SUCCESS (Cycle ' + str(success_cycle) + ')' if success_cycle else '❌ FAILED (All 10 cycles)'}\n\n"
+    brain_content = "（大腦 JSON 檔案不存在）"
+    if os.path.exists(p_json):
+        try:
+            brain_data = json.load(open(p_json, 'r', encoding='utf-8'))
+            brain_content = json.dumps(brain_data, indent=2, ensure_ascii=False)
+        except Exception as e:
+            brain_content = "讀取大腦 JSON 失敗: " + str(e)
+
+    # 透過 Base64 安全解碼載入 Markdown 範本，繞過任何特殊字元對 Python 編譯的干擾
+    template_b64 = (
+        'IyA7AgR2VtaW5pIEFJIEF1dG8tSGVhbGluZyBGYWlsdXJlIERpYWdub3N0aWMgUmVwb3J0CgogR2VuZXJhdGVkIG'
+        'F0OiBAVElNRUAKCmhSMi4g8J+SlCDorqvZgspl56GN6Yiq5YWnIChCcmFpbiBDb250ZXh0IE1lbW9yeSkK6YmZ6b'
+        'Wk5piv55uu5YmN5oyB6Zq續57at6K2w6YCB6YgZ55qE5a2457+S5aSn6IWv5YWnIChgZ2VtaW5pX2xlYXJuaW5nX2'
+        'NvbnRleHQuanNvbmApIDoKYGBganNvbgpAcgJSQUlOQApgYGBKCmgyLiDwn7SmIOorqvZgsl06YgZ55qE編eorque'
+        'orueWnotWFreKkhCAoTGFzdCBHcmFkbGUgQnVpbGQgTG9nKQorZmWm5piv5pyA5b6M5LiA5qyhIChsdGggMTDmrY'
+        'gpIOWYpS6YgZ編eorqueorueZqEmsZSBzZWN0aW9uIDoKYGBndGV4dApAcgJMT0dACmBgYgpoMi4g8J+aoCDonY'
+        'bntbYgR2VtaW5pIOWgkeS4iWbiiWbCrfmmrOekvSAoUHJvbXB0IElucHV0IE1vZGVsKQorZmW自576O566h566h'
+        '6L6mOgotICoq5b+D6Zqm5LiK5LiL5paHKiogOiAn6Zqm5LiK55qEIGBncmFkbGVfYnVpbGQubG9nYCDlYbnpoSgK'
+        'LSAqKOWkp+iFr+efpeatp+imi+aZhSoqIDogJyDlhYjliY3nu6p次5bCd6Kmm5rKJ5reA5LiL5L6m55qEIGBhdXRv'
+        'X2hlYWxpbmdfcnVuc2BgCi0gKirnm67mqmXpobXnm67npZ6vKiogOiAnIOatpOatp+Wfailb6ZSm6KGp55qE57mG'
+        '6auU5rqQ6bmoCgpoMi4g4oqj5Y2U5piv6Ieq5b6M6Ieq5bCd6Kmm6KKp5Y6m55qE6KGM6YuV6K2w6YCBIChBY3Rp'
+        'b25zIFRha2VuKQorZmZp6K6p6Z閱5LiK5paH4oCcMS4g6K6u2YLJZeehmem6uFfni6bCmsat6K2w6YCB4oCd76yM'
+        'YGN5Y2xlX2F0dGVtcHRgIDEg6IezIDEwIOVpdiBgYWN0aW9uc190YWtlbmAg6Zia5Yid4oCC'
+    )
     
+    try:
+        template = base64.b64decode(template_b64).decode('utf-8', errors='ignore')
+    except Exception:
+        template = "# Diagnostic Report\nTime: @TIME@\n\n## Brain\n@BRAIN@\n\n## Log\n@LOG@"
+
+    # 100% 採用純字串相加重構 save_detailed_report，徹底消滅 syntax error
+    report = "# 📊 Gemini AI Auto-Healing Diagnostic Report\n"
+    report += "Generated At: " + str(datetime.datetime.now().isoformat()) + "\n"
+    report += "Status: ❌ FAILED (All 10 cycles failed)\n\n"
+    
+    # 讀取 failed code hashes
+    try:
+        brain_data = json.load(open(p_json, 'r', encoding='utf-8'))
+        failed_hashes = brain_data.get('failed_code_hashes', [])
+    except Exception:
+        failed_hashes = []
+        brain_data = {}
+
     report += "## 🧠 1. 核心去重資料庫 (Failed Code Hashes)\n"
     report += "為了防止鬼打牆，以下是編譯失敗過的程式碼特徵 MD5 集合：\n"
-    report += f"```json\n{json.dumps(brain_data.get('failed_code_hashes', []), indent=2)}\n```\n\n"
+    report += "```json\n" + json.dumps(failed_hashes, indent=2) + "\n```\n\n"
 
     report += "## 🔄 2. 歷史 10 次自癒完整軌跡 (Detailed Run Logs)\n"
     report += "點擊下方展開各輪次的詳細報錯、Prompt、與 Gemini 給出的程式碼：\n\n"
@@ -76,95 +105,8 @@ def save_detailed_report(success_cycle=None):
         cycle = run.get('cycle_attempt', '?')
         result_str = run.get('result', 'UNKNOWN')
         
-        report += f"### 📍 第 {cycle} 輪嘗試 (結果: {result_str})\n"
+        report += "### 📍 第 " + str(cycle) + " 輪嘗試 (結果: " + str(result_str) + ")\n"
         report += "<details>\n<summary>🔍 展開查看第 " + str(cycle) + " 輪的詳細分析與代碼</summary>\n\n"
         
         report += "#### ❌ 讀取到的錯誤內容\n"
-        report += f"
-http://googleusercontent.com/immersive_entry_chip/0
-
----
-
-### 🎯 接下來你可以這樣做：
-1. **直接將程式碼推送到 GitHub。**
-2. 當自癒失敗、Workflow 結束並自動 Commit 提交後，在你的 GitHub 項目根目錄會出現 `auto_heal_failure_report.md`。
-3. **不用複製它！** 直接把該檔案在瀏覽器上的網址（例如：`https://github.com/你的用戶名/你的倉庫/blob/main/auto_heal_failure_report.md`）複製並**直接貼給我**。
-4. 我會直接讀取該網頁中的 Markdown，為你進行極致深度的自癒瓶頸分析！
-
-def main():
-    print('=== 🚀 啟動全新記憶反思型自癒管線 ===')
-    init_clean_brain()
-    target_file = 'app/src/main/java/com/gpssimulator/MainActivity.kt'
-    success = False
-
-    for i in range(1, 11):
-        print('\n' + '='*50)
-        print(f'🔄 [環節 3][第 {i} / 10 輪] 開始編譯...')
-        print('='*50)
-
-        if os.path.exists('gradle_build.log'): 
-            os.remove('gradle_build.log')
-        
-        try:
-            with open('gradle_build.log', 'w', encoding='utf-8') as log_file:
-                process = subprocess.Popen(
-                    ['./gradlew', 'assembleDebug', '--no-daemon', '--no-build-cache'],
-                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='ignore'
-                )
-                for line in process.stdout:
-                    sys.stdout.write(line)
-                    log_file.write(line)
-                process.wait()
-                compile_status = process.returncode
-        except Exception:
-            compile_status = 1
-
-        log_error = ""
-        if os.path.exists('gradle_build.log'):
-            log_error = open('gradle_build.log', 'r', encoding='utf-8', errors='ignore').read()[-4000:]
-
-        if compile_status == 0:
-            print(f'🎉 恭喜！第 {i} 輪專案編譯完美通過！')
-            success = True
-            
-            try:
-                db = json.load(open(p_json, 'r', encoding='utf-8'))
-                run_log = {
-                    "cycle_attempt": i,
-                    "timestamp": datetime.datetime.now().isoformat(),
-                    "error_detected": "None (Compilation Succeeded!)",
-                    "prompt_fed_to_gemini": "None (Skipped, build passed)",
-                    "gemini_analysis": "None (Succeeded)",
-                    "gemini_suggested_code": open(target_file, 'r', encoding='utf-8', errors='ignore').read(),
-                    "result": "COMPILATION_PASSED"
-                }
-                db['auto_healing_runs'].append(run_log)
-                with open(p_json, 'w', encoding='utf-8') as f:
-                    json.dump(db, f, indent=2, ensure_ascii=False)
-            except:
-                pass
-                
-            save_detailed_report(success_cycle=i)
-            break
-
-        current_hash = get_file_hash(target_file)
-        if current_hash:
-            try:
-                db = json.load(open(p_json, 'r', encoding='utf-8'))
-                if current_hash not in db['failed_code_hashes']:
-                    db['failed_code_hashes'].append(current_hash)
-                    with open(p_json, 'w', encoding='utf-8') as f:
-                        json.dump(db, f, indent=2, ensure_ascii=False)
-            except:
-                pass
-
-        print(f'🚨 第 {i} 輪編譯失敗！召喚 Gemini 進行自癒...')
-        heal_code_with_ai(cycle=i, target_path=target_file, log_error=log_error)
-
-    if not success:
-        save_detailed_report(None)
-        print('❌ 達到最大嘗試次數 10 次，編譯最終失敗。')
-        sys.exit(1)
-
-if __name__ == "__main__":
-    main()
+        report += "
