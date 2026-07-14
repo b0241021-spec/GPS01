@@ -1,31 +1,17 @@
-# Gemini AI 運行狀況追蹤報告
-產出時間: 2026-07-14T15:47:17.838648
-最終結果: ❌ 10輪皆失敗
+# 🚨 Gemini AI Auto-Healing Failure Diagnostic Report
+Generated at: 2026-07-14T22:48:57.935628
+Status: ❌ FAILED (All 10 cycles failed)
 
-## 📂 大腦目前記錄內容
+## 🧠 1. 核心去重資料庫 (Failed Code Hashes)
+為了防止鬼打牆，以下是編譯失敗過的程式碼特徵 MD5 集合：
 ```json
-{
-  "initial_knowledge": {
-    "failed_experiences": [
-      "Redeclaration: SimulationState.kt 重複定義",
-      "Unresolved reference: TIRAMISU / POST_NOTIFICATIONS 報錯",
-      "Unresolved reference: tvCustomCurrentGps 拼寫錯誤",
-      "Type mismatch: inferred type is String but Editable! was expected",
-      "Unresolved reference: setTargetLocation 缺失",
-      "Unresolved reference: AlertDialog 漏導包",
-      "Coroutines FlowCollector Lambda 語意衝突",
-      "Conflicting import 重複引入"
-    ],
-    "buggy_experiences": [
-      "WindowManager.LayoutParams 懸浮窗未設定 FLAG_NOT_FOCUSABLE 會導致全螢幕觸控被攔截(Touch Blocked)"
-    ]
-  },
-  "auto_healing_runs": [],
-  "failed_code_hashes": []
-}
+[]
 ```
 
-## 📝 最後一次 Gradle 編譯錯誤日誌
+## 🔄 2. 歷史 10 次自癒完整軌跡 (Detailed Run Logs)
+下方展開各輪次的詳細報錯、Prompt、與 Gemini 給出的程式碼：
+
+## 📝 3. 最後一次 Gradle 編譯錯誤完整日誌
 ```text
 To honour the JVM settings for this build a single-use Daemon process will be forked. See https://docs.gradle.org/7.5/userguide/gradle_daemon.html#sec:disabling_the_daemon.
 Daemon will be stopped at the end of the build 
@@ -48,7 +34,7 @@ Daemon will be stopped at the end of the build
 > Task :app:processDebugManifestForPackage UP-TO-DATE
 > Task :app:processDebugResources UP-TO-DATE
 
-> Task :app:compileDebugKotlin
+> Task :app:compileDebugKotlin FAILED
 e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/data/GPSSimulatorState.kt: (18, 7): Redeclaration: GPSSimulatorStateManager
 e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/data/GPSSimulatorStateManager.kt: (3, 8): Redeclaration: GPSSimulatorStateManager
 e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (81, 43): Type mismatch: inferred type is String but Editable! was expected
@@ -63,8 +49,6 @@ e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gps
 e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (369, 13): Unresolved reference: AlertDialog
 e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (372, 44): Cannot infer a type for this parameter. Please specify it explicitly.
 e: /home/runner/work/GPS01/GPS01/gps-simulator-android/app/src/main/java/com/gpssimulator/ui/MainActivity.kt: (372, 47): Cannot infer a type for this parameter. Please specify it explicitly.
-
-> Task :app:compileDebugKotlin FAILED
 
 FAILURE: Build failed with an exception.
 
@@ -85,7 +69,7 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 See https://docs.gradle.org/7.5/userguide/command_line_interface.html#sec:command_line_warnings
 
-BUILD FAILED in 16s
+BUILD FAILED in 15s
 14 actionable tasks: 1 executed, 13 up-to-date
 
 ```

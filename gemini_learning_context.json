@@ -15,5 +15,6 @@
     ]
   },
   "auto_healing_runs": [],
-  "failed_code_hashes": []
+  "failed_code_hashes": [],
+  "last_health_check": "2026-07-14T22:45:28.271620"
 }
