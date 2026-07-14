@@ -9,8 +9,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.lifecycleScope
 import com.gpssimulator.service.GPSSimulationService
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
     private var service: GPSSimulationService? = null
@@ -46,8 +48,13 @@ class MainActivity : AppCompatActivity() {
         val swView = findViewByNames<android.view.View>("switch_simulate", "simulateSwitch", "btn_simulate", "toggle_simulate", "mock_switch")
         val btnTestView = findViewByNames<android.view.View>("btn_start_test", "startTestButton", "btn_test", "test_button", "start_test")
 
+        // 👑 關鍵修復：滑塊滑動時，第一時間在 UI 主執行緒刷新畫面的數字，絕不延遲
         val seekListener = object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) { syncParamsFromUi() }
+            override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) {
+                if (s == sbSpeed) tvSpeedVal?.text = "$p km/hr"
+                if (s == sbDirection) tvDirVal?.text = "$p°"
+                syncParamsFromUi()
+            }
             override fun onStartTrackingTouch(s: SeekBar?) {}
             override fun onStopTrackingTouch(s: SeekBar?) {}
         }
@@ -87,9 +94,6 @@ class MainActivity : AppCompatActivity() {
         val lng = etLng?.text?.toString()?.toDoubleOrNull() ?: 121.5654
         val speed = sbSpeed?.progress?.toFloat() ?: 0f
         val dir = sbDirection?.progress ?: 0
-        
-        tvSpeedVal?.text = "${speed.toInt()} km/hr"
-        tvDirVal?.text = "$dir°"
         service?.updateParams(lat, lng, speed, dir)
     }
 
@@ -105,8 +109,11 @@ class MainActivity : AppCompatActivity() {
     private fun observeState() {
         lifecycleScope.launch {
             service?.uiState?.collect { state ->
-                val gpsFormattedText = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
-                tvCurrentGps?.text = gpsFormattedText
+                // 👑 關鍵修復：強制在 Main 執行緒更新當前經緯度文字，防止真機無視 UI 更新
+                withContext(Dispatchers.Main) {
+                    val gpsFormattedText = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
+                    tvCurrentGps?.text = gpsFormattedText
+                }
             }
         }
     }

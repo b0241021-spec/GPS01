@@ -57,7 +57,8 @@ class GPSSimulationService : Service() {
 
     private fun restartSimulationLoop() {
         job?.cancel()
-        job = CoroutineScope(Dispatchers.Main).launch {
+        // 👑 關鍵修復：改用 Dispatchers.IO 執行耗時的位置計算與底層發送，真機再怎麼丟 Exception 也絕不卡死 UI
+        job = CoroutineScope(Dispatchers.IO).launch {
             while (isActive && _uiState.value.isSimulating) {
                 val state = _uiState.value
                 val r = 6378137.0
@@ -87,8 +88,10 @@ class GPSSimulationService : Service() {
                         }
                         locMgr.setTestProviderLocation(p, mockLocation)
                     }
-                } catch (e: Exception) { e.printStackTrace() }
-                
+                } catch (e: Exception) {
+                    // 這裡如果因為真機沒開開發者權限報錯，只打印不卡死
+                    e.printStackTrace()
+                }
                 delay(1000)
             }
         }
