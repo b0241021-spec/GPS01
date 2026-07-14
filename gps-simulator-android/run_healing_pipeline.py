@@ -29,7 +29,7 @@ def cleanup_brain():
                 json.dump(db, open(p_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
                 print('✅ [整理大腦] JSON 學習資料庫完成重整與去重！')
         except Exception as e:
-            print(f'⚠️ [整理大腦] JSON 整理失敗: {e}')
+            print('⚠️ [整理大腦] JSON 整理失敗: ' + str(e))
 
     for root, dirs, files in os.walk('.'):
         for file in files:
@@ -39,7 +39,7 @@ def cleanup_brain():
                 except Exception:
                     pass
 
-# 📝 生成 10 次失敗時的極詳細診斷報告（透過 Base64 避開一切 Python 引號地獄）
+# 📝 生成 10 次失敗時的極詳細診斷報告
 def generate_failure_report():
     print('📝 [自癒失敗] 正在產生詳細失敗診斷報告以供分析...')
     
@@ -48,7 +48,7 @@ def generate_failure_report():
         try:
             build_log_content = open('gradle_build.log', 'r', encoding='utf-8', errors='ignore').read()
         except Exception as e:
-            build_log_content = f"讀取日誌失敗: {e}"
+            build_log_content = "讀取日誌失敗: " + str(e)
 
     brain_content = "（大腦 JSON 檔案不存在）"
     if os.path.exists(p_json):
@@ -56,10 +56,8 @@ def generate_failure_report():
             brain_data = json.load(open(p_json, 'r', encoding='utf-8'))
             brain_content = json.dumps(brain_data, indent=2, ensure_ascii=False)
         except Exception as e:
-            brain_content = f"讀取大腦 JSON 失敗: {e}"
+            brain_content = "讀取大腦 JSON 失敗: " + str(e)
 
-    # 👑 透過 Base64 加密儲存 Markdown 範本，免除任何引號、換行符號、特殊符號對 Python 解析器的干擾
-    # 原始文字為之前的 Markdown 報告結構
     template_b64 = (
         'IyA7AgR2VtaW5pIEFJIEF1dG8tSGVhbGluZyBGYWlsdXJlIERpYWdub3N0aWMgUmVwb3J0CgogR2VuZXJhdGVkIG'
         'F0OiBAVElNRUAKCmhSMi4g8J+SlCDorqvZgspl56GN6Yiq5YWnIChCcmFpbiBDb250ZXh0IE1lbW9yeSkK6YmZ6b'
@@ -77,24 +75,21 @@ def generate_failure_report():
     )
     
     try:
-        # 解碼範本
         template = base64.b64decode(template_b64).decode('utf-8', errors='ignore')
     except Exception:
-        # 萬一解碼失敗的極限 Fallback 方案
         template = "# Diagnostic Report\nTime: @TIME@\n\n## Brain\n@BRAIN@\n\n## Log\n@LOG@"
 
     log_tail = build_log_content[-10000:] if len(build_log_content) > 10000 else build_log_content
     
-    # 進行安全替換
     report_markdown = template.replace("@TIME@", datetime.datetime.now().isoformat())\
                               .replace("@BRAIN@", brain_content)\
                               .replace("@LOG@", log_tail)
     
     try:
         open(report_file, 'w', encoding='utf-8').write(report_markdown)
-        print(f'✅ [診斷報告] 失敗診斷報告已寫出至: {report_file}')
+        print('✅ [診斷報告] 失敗診斷報告已寫出。')
     except Exception as e:
-        print(f'❌ [診斷報告] 寫出失敗: {e}')
+        print('❌ [診斷報告] 寫出失敗: ' + str(e))
 
 
 def main():
@@ -111,7 +106,7 @@ def main():
                 json.dump({"auto_healing_runs": []}, f, indent=2)
         print('✅ [環節 1] 環境健全度就緒！')
     except Exception as e:
-        print(f'🚨 [環節 1 失敗] 環境修正發生異常: {e}')
+        print('🚨 [環節 1 失敗] 環境修正發生異常: ' + str(e))
 
     # ---------------- 環節 2: 大腦讀寫主動防禦測試 ----------------
     print('🧠 [環節 2] 驗證大腦記憶體 CRUD 生命週期...')
@@ -122,13 +117,69 @@ def main():
             json.dump(db, open(p_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
             print('✅ [環節 2] 大腦讀寫防禦測試通過！')
         else:
-            raise FileNotFoundError("Gemini 大腦記憶庫遺失，嘗試在下一步重新喚醒。")
+            raise FileNotFoundError("Gemini 大腦記憶庫遺失。")
     except Exception as e:
-        print(f'🚨 [環節 2 警報] 大腦存取異常，嘗試呼叫自癒修復: {e}')
+        print('🚨 [環節 2 警報] 大腦存取異常: ' + str(e))
         heal_code(0)
 
     # ---------------- 環節 3: 核心 10 次自癒編譯迴圈 ----------------
     success = False
     for i in range(1, 11):
-        print(f'\n==================================================')
-        print(f'🔄 [環節 3]
+        # 👑 徹底移除這行的 f-string 與 \n，改用最純粹的安全文字拼接，消滅 L134 錯誤
+        print('')
+        print('==================================================')
+        print('🔄 [環節 3][第 ' + str(i) + ' / 10 次嘗試] 開始編譯與自癒流程...')
+        print('==================================================')
+
+        if os.path.exists('gradle_build.log'):
+            os.remove('gradle_build.log')
+
+        try:
+            with open('gradle_build.log', 'w', encoding='utf-8') as log_file:
+                process = subprocess.Popen(
+                    ['./gradlew', 'assembleDebug', '--no-daemon', '--no-build-cache'],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    encoding='utf-8',
+                    errors='ignore'
+                )
+                for line in process.stdout:
+                    sys.stdout.write(line)
+                    log_file.write(line)
+                process.wait()
+                compile_status = process.returncode
+        except Exception as e:
+            print('❌ 執行 Gradle 失敗: ' + str(e))
+            compile_status = 1
+
+        if compile_status == 0:
+            print('🎉 恭喜！第 ' + str(i) + ' 次嘗試：專案編譯完美通過！')
+            if os.path.exists(p_json):
+                try:
+                    db = json.load(open(p_json, 'r', encoding='utf-8'))
+                    run_log = {
+                        'timestamp': datetime.datetime.now().isoformat(),
+                        'cycle_attempt': i,
+                        'status': 'SUCCESS',
+                        'actions_taken': ['Compilation passed successfully. Final APK is ready.']
+                    }
+                    db['auto_healing_runs'].append(run_log)
+                    json.dump(db, open(p_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
+                except Exception:
+                    pass
+            success = True
+            break
+
+        print('🚨 [第 ' + str(i) + ' 次嘗試] 編譯失敗！呼叫自癒大腦進行修復...')
+        heal_code(i)
+
+    cleanup_brain()
+
+    if not success:
+        generate_failure_report()
+        print('❌ 達到最大嘗試次數 10 次，編譯最終失敗。')
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
