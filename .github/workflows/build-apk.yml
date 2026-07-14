@@ -33,7 +33,6 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 步驟一：建立目錄 (安全防禦防中斷) ====================
     - name: Step 1 - Prepare Directories
       run: |
         cd gps-simulator-android
@@ -42,13 +41,10 @@ jobs:
         mkdir -p app/src/main/java/com/gpssimulator/service
         mkdir -p app/src/main/java/com/gpssimulator/ui
 
-    # ==================== 步驟二：強制寫入代碼與佈局 ====================
-    - name: Step 2 - Force Inject Source Code
+    - name: Step 2 - Inject Custom Layout XML
       run: |
         cd gps-simulator-android
-
-        # 1. XML 佈局
-        cat << 'XML' > app/src/main/res/layout/activity_main.xml
+        cat << 'EOF' > app/src/main/res/layout/activity_main.xml
         <?xml version="1.0" encoding="utf-8"?>
         <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
             android:layout_width="match_parent"
@@ -70,7 +66,7 @@ jobs:
                     android:id="@+id/tvCustomCurrentGps"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="當前位置 (經緯度): 25.033000, 121.565400"
+                    android:text="當前位置: 25.033000, 121.565400"
                     android:textSize="16sp"
                     android:textColor="#FF0000"
                     android:layout_marginBottom="16dp" />
@@ -78,14 +74,12 @@ jobs:
                     android:id="@+id/etCustomLat"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="輸入緯度 (如 25.0330)"
                     android:text="25.0330"
                     android:inputType="numberDecimal" />
                 <EditText
                     android:id="@+id/etCustomLng"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="輸入經度 (如 121.5654)"
                     android:text="121.5654"
                     android:inputType="numberDecimal"
                     android:layout_marginBottom="16dp" />
@@ -130,10 +124,12 @@ jobs:
                     android:textSize="16sp" />
             </LinearLayout>
         </ScrollView>
-        XML
+        EOF
 
-        # 2. Data Class
-        cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/data/SimulationState.kt
+    - name: Step 3 - Inject SimulationState
+      run: |
+        cd gps-simulator-android
+        cat << 'EOF' > app/src/main/java/com/gpssimulator/data/SimulationState.kt
         package com.gpssimulator.data
         data class SimulationState(
             val latitude: Double = 25.0330,
@@ -145,12 +141,13 @@ jobs:
             val direction: Int = 0,
             val isTestRunning: Boolean = false
         )
-        KOTLIN
+        EOF
 
-        # 3. Service
-        cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt
+    - name: Step 4 - Inject GPSSimulationService
+      run: |
+        cd gps-simulator-android
+        cat << 'EOF' > app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt
         package com.gpssimulator.service
-
         import android.app.NotificationChannel
         import android.app.NotificationManager
         import android.app.Service
@@ -171,7 +168,6 @@ jobs:
         class GPSSimulationService : Service() {
             private val _uiState = MutableStateFlow(SimulationState())
             val uiState: StateFlow<SimulationState> = _uiState
-
             private var job: Job? = null
             private val binder = LocalBinder()
             inner class LocalBinder : Binder() { fun getService(): GPSSimulationService = this@GPSSimulationService }
@@ -217,12 +213,9 @@ jobs:
                         val de = (state.speed * (1000f / 3600f)) * Math.sin(Math.toRadians(state.direction.toDouble()))
                         val dLat = dn / r
                         val dLon = de / (r * Math.cos(Math.toRadians(state.latitude)))
-                        
                         val newLat = state.currentLatitude + Math.toDegrees(dLat)
                         val newLng = state.currentLongitude + Math.toDegrees(dLon)
-                        
                         _uiState.value = _uiState.value.copy(currentLatitude = newLat, currentLongitude = newLng)
-                        
                         try {
                             val locMgr = getSystemService(Context.LOCATION_SERVICE) as LocationManager
                             val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
@@ -245,15 +238,15 @@ jobs:
                     }
                 }
             }
-
             override fun onDestroy() { job?.cancel(); super.onDestroy() }
         }
-        KOTLIN
+        EOF
 
-        # 4. MainActivity
-        cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/ui/MainActivity.kt
+    - name: Step 5 - Inject MainActivity
+      run: |
+        cd gps-simulator-android
+        cat << 'EOF' > app/src/main/java/com/gpssimulator/ui/MainActivity.kt
         package com.gpssimulator.ui
-
         import android.Manifest
         import android.content.*
         import android.content.pm.PackageManager
@@ -272,7 +265,6 @@ jobs:
         class MainActivity : AppCompatActivity() {
             private var service: GPSSimulationService? = null
             private var isBound = false
-
             private lateinit var etLat: EditText
             private lateinit var etLng: EditText
             private lateinit var tvCurrentGps: TextView
@@ -324,13 +316,11 @@ jobs:
                     val currentStatus = service?.uiState?.value?.isTestRunning ?: false
                     val nextStatus = !currentStatus
                     service?.toggleTest(nextStatus)
-                    
                     etLat.isEnabled = !nextStatus
                     etLng.isEnabled = !nextStatus
                     sbSpeed.isEnabled = !nextStatus
                     sbDirection.isEnabled = !nextStatus
                     cbSimulate.isEnabled = !nextStatus
-                    
                     btnTest.text = if (nextStatus) "停止測試 (已鎖定面板)" else "開始測試"
                 }
 
@@ -360,22 +350,21 @@ jobs:
                 lifecycleScope.launch {
                     service?.uiState?.collect { state ->
                         withContext(Dispatchers.Main) {
-                            tvCustomCurrentGps.text = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
+                            tvCurrentGps.text = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
                         }
                     }
                 }
             }
-
-            override fun onDestroy() {
-                super.onDestroy()
-                if (isBound) { unbindService(connection); isBound = false }
-            }
+            override fun onDestroy() { super.onDestroy(); if (isBound) { unbindService(connection); isBound = false } }
         }
-        KOTLIN
+        EOF
 
-        # 5. Build Scripts
+    - name: Step 6 - Inject Build System Configs
+      run: |
+        cd gps-simulator-android
         rm -f build.gradle settings.gradle app/build.gradle app/src/main/AndroidManifest.xml || true
-        cat << 'XML' > app/src/main/AndroidManifest.xml
+        
+        cat << 'EOF' > app/src/main/AndroidManifest.xml
         <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.gpssimulator">
             <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
             <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -387,18 +376,6 @@ jobs:
                 <service android:name=".service.GPSSimulationService" android:enabled="true" android:exported="false" android:foregroundServiceType="location" />
             </application>
         </manifest>
-        XML
+        EOF
 
-        echo "plugins { id 'com.android.application' version '7.3.1' apply false; id 'org.jetbrains.kotlin.android' version '1.7.20' apply false }" > build.gradle
-        cat << 'GRADLE' > settings.gradle
-        pluginManagement { repositories { maven { url 'https://maven.aliyun.com/repository/public' }; maven { url 'https://maven.aliyun.com/repository/google' }; gradlePluginPortal(); google(); mavenCentral() } }
-        dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { maven { url 'https://maven.aliyun.com/repository/public' }; maven { url 'https://maven.aliyun.com/repository/google' }; google(); mavenCentral() } }
-        rootProject.name = 'GPSSimulator'; include ':app'
-        GRADLE
-        echo "plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }" > app/build.gradle
-        echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; buildFeatures { viewBinding false; dataBinding false }; compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }; kotlinOptions { jvmTarget = '11' } }" >> app/build.gradle
-        echo "dependencies { implementation 'androidx.core:core-ktx:1.9.0'; implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.8.0'; implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'; implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'; implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1' }" >> app/build.gradle
-
-    # ==================== 步驟三：產生 Wrapper ====================
-    - name: Step 3 - Create Gradle Wrapper
-      wo
+        echo "plugins { id 'com.android.application' version '7.3.1
