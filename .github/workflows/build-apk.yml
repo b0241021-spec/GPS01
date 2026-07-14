@@ -33,48 +33,20 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 👑 關鍵步驟：Python 智慧修復腳本 ====================
-    - name: Step 1 - Auto-Repair Kotlin Codes using Python
+    # ==================== 👑 關鍵步驟：完全清除所有先前殘留的覆寫檔案 ====================
+    - name: Step 1 - Hard Reset to Original Code & Remove Duplicates
       run: |
-        python3 -c "
-        import os
-
-        # 1. 尋找 MainActivity.kt 進行精準修改
-        target_path = ''
-        for root, dirs, files in os.walk('.'):
-            if 'MainActivity.kt' in files:
-                target_path = os.path.join(root, 'MainActivity.kt')
-                break
-
-        if target_path:
-            print(f'Found MainActivity.kt at: {target_path}')
-            with open(target_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-
-            # 補上必要的 UI 套件 import
-            if 'import androidx.appcompat.app.AlertDialog' not in content:
-                content = content.replace('package com.gpssimulator.ui', 'package com.gpssimulator.ui\nimport androidx.appcompat.app.AlertDialog\nimport android.os.Build')
-                content = content.replace('package com.gpssimulator', 'package com.gpssimulator\nimport androidx.appcompat.app.AlertDialog\nimport android.os.Build')
-
-            # 修復 TIRAMISU 和 POST_NOTIFICATIONS 無法解析的問題（用反射與硬編碼數字安全繞過）
-            content = content.replace('Build.VERSION_CODES.TIRAMISU', '33')
-            content = content.replace('Manifest.permission.POST_NOTIFICATIONS', '\"android.permission.POST_NOTIFICATIONS\"')
-
-            # 修復 String 轉 Editable 型態不符的問題 (將 .text = \"xxx\" 改為 .setText(\"xxx\"))
-            # 這裡針對常見的 EditText 賦值進行安全過濾
-            content = content.replace('etCustomLat.text =', 'etCustomLat.setText(')
-            content = content.replace('etCustomLng.text =', 'etCustomLng.setText(')
-            # 如果有改為 setText，需要把結尾補上括號。為安全起見，直接使用最通用的取代：
-            # 先試圖把原本可能出錯的等號賦值換成 setText
-            import re
-            content = re.sub(r'(\w+)\.text\s*=\s*(.*?)\n', r'\1.setText(\2)\n', content)
-
-            with open(target_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-            print('Successfully applied Python repair-patches to MainActivity.kt!')
-        else:
-            print('Error: MainActivity.kt not found!')
-        "
+        cd gps-simulator-android
+        
+        # 1. 強制還原 MainActivity 避免任何先前殘留的 sed/python 修改痕跡
+        git checkout -- app/src/main/java/com/gpssimulator/ui/MainActivity.kt || echo "Original MainActivity intact"
+        git checkout -- app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt || echo "Original Service intact"
+        
+        # 2. 徹底刪除在先前 Actions 中錯誤產生的「重複」狀態檔案
+        # 這樣就不會再有 Redeclaration: SimulationState 錯誤！
+        rm -f app/src/main/java/com/gpssimulator/data/SimulationState.kt || true
+        
+        echo "Successfully cleaned up duplicate files and restored original codebase."
 
     # ==================== 建立 Gradle Wrapper ====================
     - name: Step 2 - Create Gradle Wrapper
