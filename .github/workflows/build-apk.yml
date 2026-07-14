@@ -33,39 +33,37 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    - name: Step 1 - Eliminate Duplicated State File
+    # ==================== 👑 核心修復：只刪除衝突檔案 ====================
+    - name: Step 1 - Eliminate Duplicated State File Only
       run: |
         cd gps-simulator-android
-        # 直接刪除導致重複宣告 (Redeclaration) 的舊狀態檔案
+        # 只刪除重複定義 (Redeclaration) 的 GPSSimulatorState.kt
         rm -f app/src/main/java/com/gpssimulator/data/GPSSimulatorState.kt || true
-        echo "Successfully cleaned up old conflicting state files."
+        echo "Cleaned up conflicting state file."
 
+    # ==================== 👑 核心修復：只修正 UI 筆誤 ====================
     - name: Step 2 - Fix UI Variable Typos via Linux Sed
       run: |
         cd gps-simulator-android
-        # 用 sed 直接修改 MainActivity.kt，把寫錯的 tvCustomCurrentGps 換成正確的 tvCurrentGps
-        # 同時確保所有 SimulationState 的欄位呼叫正確
+        # 將 MainActivity.kt 內誤植的 tvCustomCurrentGps 替換為正確定義的 tvCurrentGps
         find app/src/main/java -name "MainActivity.kt" -exec sed -i 's/tvCustomCurrentGps/tvCurrentGps/g' {} \;
-        echo "Successfully patched variable names in MainActivity."
+        echo "Successfully patched MainActivity variable names."
 
-    - name: Step 3 - Patch Build Configs safely
-      run: |
-        cd gps-simulator-android
-        # 強制覆寫 build.gradle 以免版本不合
-        echo "plugins { id 'com.android.application' version '7.3.1' apply false; id 'org.jetbrains.kotlin.android' version '1.7.20' apply false }" > build.gradle
-
-    - name: Step 4 - Create Gradle Wrapper
+    # ==================== 建立 Gradle Wrapper ====================
+    - name: Step 3 - Create Gradle Wrapper
       working-directory: ./gps-simulator-android
       run: |
         gradle wrapper --gradle-version 7.5
         chmod +x gradlew
 
-    - name: Step 5 - Final Compile Production APK
+    # ==================== 正式編譯 ====================
+    - name: Step 4 - Final Compile Production APK
       working-directory: ./gps-simulator-android
       run: |
         ./gradlew clean assembleDebug --no-daemon --no-build-cache
 
-    - name: Step 6 - Export APK to Root Directory
+    # ==================== 匯出並上傳 APK ====================
+    - name: Step 5 - Export APK to Root Directory
       run: |
         mkdir -p output_apk
         find . -name "*.apk" -exec cp {} ./output_apk/gps-simulator-debug.apk \;
