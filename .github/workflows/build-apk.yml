@@ -350,7 +350,7 @@ jobs:
                 lifecycleScope.launch {
                     service?.uiState?.collect { state ->
                         withContext(Dispatchers.Main) {
-                            tvCurrentGps.text = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
+                            tvCustomCurrentGps.text = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
                         }
                     }
                 }
@@ -378,4 +378,31 @@ jobs:
         </manifest>
         EOF
 
-        echo "plugins { id 'com.android.application' version '7.3.1
+        # 👑 這裡精準修復：將漏掉的引號確實補上，改用單引號封裝防止 shell 展開
+        echo "plugins { id 'com.android.application' version '7.3.1' apply false; id 'org.jetbrains.kotlin.android' version '1.7.20' apply false }" > build.gradle
+        
+        cat << 'EOF' > settings.gradle
+        pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+        dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+        rootProject.name = 'GPSSimulator'; include ':app'
+        EOF
+        
+        echo "plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }" > app/build.gradle
+        echo "android { namespace 'com.gpssimulator'; compileSdk 33; defaultConfig { applicationId 'com.gpssimulator'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' }; buildTypes { release { minifyEnabled false } }; compileOptions { sourceCompatibility JavaVersion.VERSION_11; targetCompatibility JavaVersion.VERSION_11 }; kotlinOptions { jvmTarget = '11' } }" >> app/build.gradle
+        echo "dependencies { implementation 'androidx.core:core-ktx:1.9.0'; implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'com.google.android.material:material:1.8.0'; implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'; implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'; implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1' }" >> app/build.gradle
+
+    - name: Step 7 - Create Gradle Wrapper
+      working-directory: ./gps-simulator-android
+      run: |
+        gradle wrapper --gradle-version 7.5
+        chmod +x gradlew
+
+    - name: Step 8 - Final Compile Production APK
+      working-directory: ./gps-simulator-android
+      run: |
+        ./gradlew clean assembleDebug --no-daemon --no-build-cache
+
+    - name: Step 9 - Export APK to Root Directory
+      run: |
+        mkdir -p output_apk
+        find . -name "*.apk" -exec cp {} ./output_apk/gps-simulator-d
