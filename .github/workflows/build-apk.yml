@@ -33,20 +33,259 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 👑 關鍵步驟：完全清除所有先前殘留的覆寫檔案 ====================
-    - name: Step 1 - Hard Reset to Original Code & Remove Duplicates
+    # ==================== 👑 關鍵步驟：直接寫入完全對齊的 3 個核心程式碼 ====================
+    - name: Step 1 - Clean & Force Align State/Service/Activity Code
       run: |
         cd gps-simulator-android
         
-        # 1. 強制還原 MainActivity 避免任何先前殘留的 sed/python 修改痕跡
-        git checkout -- app/src/main/java/com/gpssimulator/ui/MainActivity.kt || echo "Original MainActivity intact"
-        git checkout -- app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt || echo "Original Service intact"
-        
-        # 2. 徹底刪除在先前 Actions 中錯誤產生的「重複」狀態檔案
-        # 這樣就不會再有 Redeclaration: SimulationState 錯誤！
+        # 1. 徹底清除所有可能衝突的狀態檔案，重建乾淨的目錄
         rm -f app/src/main/java/com/gpssimulator/data/SimulationState.kt || true
-        
-        echo "Successfully cleaned up duplicate files and restored original codebase."
+        rm -f app/src/main/java/com/gpssimulator/data/GPSSimulatorState.kt || true
+        mkdir -p app/src/main/java/com/gpssimulator/data
+        mkdir -p app/src/main/java/com/gpssimulator/service
+        mkdir -p app/src/main/java/com/gpssimulator/ui
+
+        # 2. 寫入唯一的 State 檔案（定義 Service & Activity 需要的所有欄位）
+        cat << 'EOF' > app/src/main/java/com/gpssimulator/data/SimulationState.kt
+        package com.gpssimulator.data
+        data class SimulationState(
+            val latitude: Double = 25.0330,
+            val longitude: Double = 121.5654,
+            val currentLatitude: Double = 25.0330,
+            val currentLongitude: Double = 121.5654,
+            val isSimulating: Boolean = false,
+            val speed: Float = 0f,
+            val direction: Int = 0,
+            val isTestRunning: Boolean = false
+        )
+        EOF
+
+        # 3. 寫入 Service 檔案（100% 搭配上面定義的 SimulationState 欄位）
+        cat << 'EOF' > app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt
+        package com.gpssimulator.service
+        import android.app.NotificationChannel
+        import android.app.NotificationManager
+        import android.app.Service
+        import android.content.Context
+        import android.content.Intent
+        import android.location.Location
+        import android.location.LocationManager
+        import android.os.Binder
+        import android.os.Build
+        import android.os.IBinder
+        import android.os.SystemClock
+        import androidx.core.app.NotificationCompat
+        import com.gpssimulator.data.SimulationState
+        import kotlinx.coroutines.*
+        import kotlinx.coroutines.flow.MutableStateFlow
+        import kotlinx.coroutines.flow.StateFlow
+
+        class GPSSimulationService : Service() {
+            private val _uiState = MutableStateFlow(SimulationState())
+            val uiState: StateFlow<SimulationState> = _uiState
+            private var job: Job? = null
+            private val binder = LocalBinder()
+            inner class LocalBinder : Binder() { fun getService(): GPSSimulationService = this@GPSSimulationService }
+            override fun onBind(intent: Intent?): IBinder = binder
+
+            override fun onCreate() {
+                super.onCreate()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val channel = NotificationChannel("gps_channel", "GPS Simulation", NotificationManager.IMPORTANCE_LOW)
+                    getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
+                }
+                val notification = NotificationCompat.Builder(this, "gps_channel")
+                    .setContentTitle("GPS Simulator Running")
+                    .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                    .build()
+                startForeground(1, notification)
+            }
+
+            fun updateParams(lat: Double, lng: Double, speed: Float, direction: Int) {
+                if (!_uiState.value.isSimulating) {
+                    _uiState.value = _uiState.value.copy(
+                        latitude = lat, 
+                        longitude = lng, 
+                        currentLatitude = lat, 
+                        currentLongitude = lng, 
+                        speed = speed, 
+                        direction = direction
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        latitude = lat, 
+                        longitude = lng, 
+                        speed = speed, 
+                        direction = direction
+                    )
+                }
+            }
+
+            fun toggleSimulation(enable: Boolean) {
+                _uiState.value = _uiState.value.copy(isSimulating = enable)
+                if (enable) restartSimulationLoop() else job?.cancel()
+            }
+
+            fun toggleTest(enable: Boolean) {
+                _uiState.value = _uiState.value.copy(isTestRunning = enable)
+            }
+
+            private fun restartSimulationLoop() {
+                job?.cancel()
+                job = CoroutineScope(Dispatchers.IO).launch {
+                    while (isActive && _uiState.value.isSimulating) {
+                        val state = _uiState.value
+                        val r = 6378137.0
+                        val dn = (state.speed * (1000f / 3600f)) * Math.cos(Math.toRadians(state.direction.toDouble()))
+                        val de = (state.speed * (1000f / 3600f)) * Math.sin(Math.toRadians(state.direction.toDouble()))
+                        val dLat = dn / r
+                        val dLon = de / (r * Math.cos(Math.toRadians(state.latitude)))
+                        val newLat = state.currentLatitude + Math.toDegrees(dLat)
+                        val newLng = state.currentLongitude + Math.toDegrees(dLon)
+                        _uiState.value = _uiState.value.copy(currentLatitude = newLat, currentLongitude = newLng)
+                        try {
+                            val locMgr = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+                            val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+                            for (p in providers) {
+                                try { locMgr.addTestProvider(p, false, false, false, false, true, true, true, 1, 2) } catch(e:Exception){}
+                                val mockLocation = Location(p).apply {
+                                    latitude = newLat
+                                    longitude = newLng
+                                    altitude = 0.0
+                                    time = System.currentTimeMillis()
+                                    elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+                                    accuracy = 1.0f
+                                }
+                                locMgr.setTestProviderLocation(p, mockLocation)
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                        delay(1000)
+                    }
+                }
+            }
+            override fun onDestroy() { job?.cancel(); super.onDestroy() }
+        }
+        EOF
+
+        # 4. 寫入 MainActivity 檔案（100% 安全對接，並完美繞過 TIRAMISU 與 POST_NOTIFICATIONS SDK 版本報錯問題）
+        cat << 'EOF' > app/src/main/java/com/gpssimulator/ui/MainActivity.kt
+        package com.gpssimulator.ui
+        import android.Manifest
+        import android.content.*
+        import android.content.pm.PackageManager
+        import android.os.*
+        import android.widget.*
+        import androidx.appcompat.app.AppCompatActivity
+        import androidx.core.app.ActivityCompat
+        import androidx.lifecycle.lifecycleScope
+        import com.gpssimulator.service.GPSSimulationService
+        import kotlinx.coroutines.Dispatchers
+        import kotlinx.coroutines.flow.collect
+        import kotlinx.coroutines.launch
+        import kotlinx.coroutines.withContext
+        import com.gpssimulator.R
+
+        class MainActivity : AppCompatActivity() {
+            private var service: GPSSimulationService? = null
+            private var isBound = false
+            private lateinit var etLat: EditText
+            private lateinit var etLng: EditText
+            private lateinit var tvCurrentGps: TextView
+            private lateinit var sbSpeed: SeekBar
+            private lateinit var sbDirection: SeekBar
+            private lateinit var tvSpeedVal: TextView
+            private lateinit var tvDirVal: TextView
+            private lateinit var cbSimulate: CheckBox
+            private lateinit var btnTest: Button
+
+            override fun onCreate(savedInstanceState: Bundle?) {
+                super.onCreate(savedInstanceState)
+                setContentView(R.layout.activity_main)
+
+                val reqs = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                // 用硬編碼與安全字串繞過 API 33 編譯限制
+                if (Build.VERSION.SDK_INT >= 33) {
+                    reqs.add("android.permission.POST_NOTIFICATIONS")
+                }
+                if (reqs.any { ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }) {
+                    ActivityCompat.requestPermissions(this, reqs.toTypedArray(), 101)
+                }
+
+                etLat = findViewById(R.id.etCustomLat)
+                etLng = findViewById(R.id.etCustomLng)
+                tvCurrentGps = findViewById(R.id.tvCustomCurrentGps)
+                sbSpeed = findViewById(R.id.sbCustomSpeed)
+                sbDirection = findViewById(R.id.sbCustomDirection)
+                tvSpeedVal = findViewById(R.id.tvCustomSpeedVal)
+                tvDirVal = findViewById(R.id.tvCustomDirVal)
+                cbSimulate = findViewById(R.id.cbCustomSimulate)
+                btnTest = findViewById(R.id.btnCustomTest)
+
+                val seekListener = object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) {
+                        if (s == sbSpeed) tvSpeedVal.text = "模擬速度: $p km/hr"
+                        if (s == sbDirection) tvDirVal.text = "模擬方向: $p°"
+                        syncParamsFromUi()
+                    }
+                    override fun onStartTrackingTouch(s: SeekBar?) {}
+                    override fun onStopTrackingTouch(s: SeekBar?) {}
+                }
+                sbSpeed.setOnSeekBarChangeListener(seekListener)
+                sbDirection.setOnSeekBarChangeListener(seekListener)
+
+                cbSimulate.setOnCheckedChangeListener { _, isChecked ->
+                    syncParamsFromUi()
+                    service?.toggleSimulation(isChecked)
+                }
+
+                btnTest.setOnClickListener {
+                    val currentStatus = service?.uiState?.value?.isTestRunning ?: false
+                    val nextStatus = !currentStatus
+                    service?.toggleTest(nextStatus)
+                    etLat.isEnabled = !nextStatus
+                    etLng.isEnabled = !nextStatus
+                    sbSpeed.isEnabled = !nextStatus
+                    sbDirection.isEnabled = !nextStatus
+                    cbSimulate.isEnabled = !nextStatus
+                    btnTest.text = if (nextStatus) "停止測試 (已鎖定面板)" else "開始測試"
+                }
+
+                val intent = Intent(this, GPSSimulationService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
+                bindService(intent, connection, Context.BIND_AUTO_CREATE)
+            }
+
+            private fun syncParamsFromUi() {
+                val lat = etLat.text.toString().toDoubleOrNull() ?: 25.0330
+                val lng = etLng.text.toString().toDoubleOrNull() ?: 121.5654
+                val speed = sbSpeed.progress.toFloat()
+                val dir = sbDirection.progress
+                service?.updateParams(lat, lng, speed, dir)
+            }
+
+            private val connection = object : ServiceConnection {
+                override fun onServiceConnected(n: ComponentName?, s: IBinder?) {
+                    service = (s as GPSSimulationService.LocalBinder).getService()
+                    isBound = true
+                    observeState()
+                }
+                override fun onServiceDisconnected(n: ComponentName?) { isBound = false }
+            }
+
+            private fun observeState() {
+                lifecycleScope.launch {
+                    service?.uiState?.collect { state ->
+                        withContext(Dispatchers.Main) {
+                            tvCurrentGps.text = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
+                        }
+                    }
+                }
+            }
+            override fun onDestroy() { super.onDestroy(); if (isBound) { unbindService(connection); isBound = false } }
+        }
+        EOF
 
     # ==================== 建立 Gradle Wrapper ====================
     - name: Step 2 - Create Gradle Wrapper
