@@ -51,7 +51,6 @@ jobs:
         echo "🧠 [大腦存取測試] 開始驗證記憶體 CRUD 生命週期..."
         echo "=================================================="
         
-        # 使用獨立 Python 腳本對儲存媒介進行寫入、讀取、刪除、再次讀取的驗證
         python3 -c "
         import sys, json, os
         
@@ -84,6 +83,9 @@ jobs:
     # ==================== Step 3 - 全步驟自癒與編譯循環 ====================
     - name: Step 3 - Execute 10-Cycle Full-Process Auto-Healing Engine
       working-directory: ./gps-simulator-android
+      # 👑 設定全域環境變數，限制 Gradle 記憶體，防止 JVM 默默崩潰被系統殺掉 (OOM)
+      env:
+        GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -Dorg.gradle.daemon=false"
       run: |
         echo "=== 🚀 啟動全步驟自癒診斷與編譯引擎 (最大嘗試 10 次) ==="
         
@@ -216,7 +218,7 @@ jobs:
           echo "🔄 [第 $i / 10 次嘗試] 開始編譯專案..."
           echo "=================================================="
           
-          # 單純專注於 Gradle Android 的編譯 (確保產出 APK)
+          # 限制記憶體，且不使用背景 daemon 執行編譯
           ./gradlew assembleDebug --no-daemon --no-build-cache > gradle_build.log 2>&1
           COMPILE_STATUS=$?
           
@@ -225,8 +227,8 @@ jobs:
             python3 -c "
             import json, datetime, os
             p_json = '../gemini_learning_context.json'
-            if os.path.exists(p_json, 'r', encoding='utf-8'):
-                db = json.load(open(p_json))
+            if os.path.exists(p_json):
+                db = json.load(open(p_json, 'r', encoding='utf-8'))
                 run_log = {
                     'timestamp': datetime.datetime.now().isoformat(),
                     'cycle_attempt': $i,
@@ -239,14 +241,17 @@ jobs:
             break
           fi
           
-          echo "🚨 [第 $i 次嘗試] 編譯失敗！列印最後 80 行錯誤日誌："
-          echo "------------------------------------------------------------"
-          if [ -f gradle_build.log ]; then
-            tail -n 80 gradle_build.log
+          # ==================== 🚨 升級：如果日誌是空的，代表是 JVM 級別的閃退，強制重跑並印出 Stacktrace ====================
+          if [ ! -s gradle_build.log ]; then
+            echo "⚠️ 偵測到 Gradle 閃退且未留下日誌（可能是 JVM / 依賴加載崩潰）！"
+            echo "🔄 正在嘗試啟動「強光診斷模式」..."
+            ./gradlew assembleDebug --no-daemon --stacktrace --info
           else
-            echo "找不到 gradle_build.log！"
+            echo "🚨 [第 $i 次嘗試] 編譯失敗！列印最後 80 行錯誤日誌："
+            echo "------------------------------------------------------------"
+            tail -n 80 gradle_build.log
+            echo "------------------------------------------------------------"
           fi
-          echo "------------------------------------------------------------"
           
           echo "🛠️ 啟動獨立自癒腳本進行診斷與自動修復..."
           python3 auto_healer.py $i
