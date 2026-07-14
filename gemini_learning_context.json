@@ -1,0 +1,31 @@
+{
+  "project_name": "GPS Simulator Android",
+  "learning_version": "1.0",
+  "historical_lessons_learned": [
+    {
+      "issue_type": "Redeclaration",
+      "symptom": "Redeclaration: SimulationState",
+      "root_cause": "GPSSimulatorState.kt 與 SimulationState.kt 在同一個 package 內重複宣告了 SimulationState 類別。",
+      "solution": "必須刪除 SimulationState.kt，完全保留並使用原廠的 GPSSimulatorState.kt。"
+    },
+    {
+      "issue_type": "SDK Compatibility",
+      "symptom": "Unresolved reference: TIRAMISU / POST_NOTIFICATIONS",
+      "root_cause": "compileSdk 低於 33 時，編譯器不認識 Build.VERSION_CODES.TIRAMISU 與該權限常數。",
+      "solution": "在程式碼中，將 Build.VERSION_CODES.TIRAMISU 替換為數字 33，將權限常數替換為字串 \"android.permission.POST_NOTIFICATIONS\"。"
+    },
+    {
+      "issue_type": "UI Variable Typo",
+      "symptom": "Unresolved reference: tvCustomCurrentGps",
+      "root_cause": "MainActivity 中誤用了 tvCustomCurrentGps，但佈局中正確對應的變數名稱應為 tvCurrentGps。",
+      "solution": "使用正則表達式或字串替換，將 tvCustomCurrentGps 全局更正為 tvCurrentGps。"
+    },
+    {
+      "issue_type": "Missing Dependency Manager",
+      "symptom": "Unresolved reference: GPSSimulatorStateManager",
+      "root_cause": "刪除舊狀態檔時意外導致原生的 StateManager 遺失，造成 MainActivity 無法橋接 Service 狀態。",
+      "solution": "在 com.gpssimulator.data 下動態生成一個安全的虛擬橋接類別 GPSSimulatorStateManager.kt。"
+    }
+  ],
+  "auto_healing_runs": []
+}
