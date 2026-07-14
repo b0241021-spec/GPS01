@@ -1,6 +1,6 @@
 {
   "project_name": "GPS Simulator Android",
-  "learning_version": "1.0",
+  "learning_version": "1.1",
   "historical_lessons_learned": [
     {
       "issue_type": "Redeclaration",
@@ -25,6 +25,12 @@
       "symptom": "Unresolved reference: GPSSimulatorStateManager",
       "root_cause": "刪除舊狀態檔時意外導致原生的 StateManager 遺失，造成 MainActivity 無法橋接 Service 狀態。",
       "solution": "在 com.gpssimulator.data 下動態生成一個安全的虛擬橋接類別 GPSSimulatorStateManager.kt。"
+    },
+    {
+      "issue_type": "Screen Touch Overlay Listener Error",
+      "symptom": "Permission denial for SYSTEM_ALERT_WINDOW or Touch Passthrough Failure",
+      "root_cause": "在監聽螢幕操作或開啟懸浮模擬控制器時，缺少 ACTION_MANAGE_OVERLAY_PERMISSION 權限，或者 WindowManager 的 LayoutParams 缺少 FLAG_NOT_FOCUSABLE，導致整個螢幕被懸浮窗擋住無法操作其他 App。",
+      "solution": "檢查並請求 SYSTEM_ALERT_WINDOW 懸浮窗權限，並確保在建立觸控監聽懸浮視窗時，LayoutParams 包含 FLAG_NOT_FOCUSABLE 與 FLAG_NOT_TOUCH_MODAL 旗標以實現觸控穿透。"
     }
   ],
   "auto_healing_runs": []
