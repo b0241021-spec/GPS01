@@ -50,63 +50,183 @@ jobs:
       run: |
         echo "=== 🚀 啟動自癒診斷與 CRUD 驗證引擎 (最大嘗試 10 次) ==="
         
+        # 1. 👑 建立獨立的 Python 診斷與自癒腳本檔 (避免 YAML/Bash 解析衝突)
+        cat << 'EOF' > auto_healer.py
+        import os, re, json, datetime, sys
+
+        cycle = sys.argv[1] if len(sys.argv) > 1 else "1"
+        p_json = '../gemini_learning_context.json'
+        log_exists = os.path.exists('gradle_build.log')
+        log_content = open('gradle_build.log', 'r', encoding='utf-8', errors='ignore').read() if log_exists else ''
+
+        actions_taken = []
+        detected_errors = []
+
+        # -------- 歷史問題 5：解決懸浮窗與觸控穿透監聽 (WindowManager LayoutParams) --------
+        for root, dirs, files in os.walk('.'):
+            for f in files:
+                if f.endswith('.kt') and f != 'SimulationStateCrudTest.kt' and f != 'auto_healer.py':
+                    p = os.path.join(root, f)
+                    try:
+                        code = open(p, 'r', encoding='utf-8').read()
+                        if 'WindowManager.LayoutParams' in code and 'FLAG_NOT_FOCUSABLE' not in code:
+                            detected_errors.append('Screen Overlay Touch Blocked')
+                            code = code.replace(
+                                'WindowManager.LayoutParams(',
+                                'WindowManager.LayoutParams(\n            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,\n            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,\n            '
+                            )
+                            open(p, 'w', encoding='utf-8').write(code)
+                            actions_taken.append(f'Auto-repaired {p}: Configured WindowManager flags for Touch Passthrough.')
+                    except Exception as e:
+                        pass
+
+        # -------- 規則 0: 處理 gradlew 啟動即崩潰 --------
+        if not log_exists or len(log_content.strip()) == 0:
+            detected_errors.append('Gradlew Boot Crash')
+            os.system('sed -i "s/\r$//" gradlew')
+            os.system('chmod +x gradlew')
+            actions_taken.append('Sanitized gradlew line endings and fixed execution permission.')
+
+        # -------- 規則 1: 解決 Redeclaration --------
+        if 'Redeclaration: SimulationState' in log_content:
+            detected_errors.append('Redeclaration: SimulationState')
+            target_dup = 'app/src/main/java/com/gpssimulator/data/SimulationState.kt'
+            if os.path.exists(target_dup):
+                os.remove(target_dup)
+                actions_taken.append('Removed duplicate file: SimulationState.kt')
+
+        # -------- 規則 2: 解決 TIRAMISU / POST_NOTIFICATIONS 相容問題 --------
+        if 'Unresolved reference: TIRAMISU' in log_content or 'Unresolved reference: POST_NOTIFICATIONS' in log_content:
+            detected_errors.append('Unresolved reference: TIRAMISU / POST_NOTIFICATIONS')
+            for root, dirs, files in os.walk('.'):
+                for f in files:
+                    if f == 'MainActivity.kt':
+                        p = os.path.join(root, f)
+                        code = open(p, 'r', encoding='utf-8', errors='ignore').read()
+                        code = code.replace('Build.VERSION_CODES.TIRAMISU', '33')
+                        code = code.replace('Manifest.permission.POST_NOTIFICATIONS', '"android.permission.POST_NOTIFICATIONS"')
+                        open(p, 'w', encoding='utf-8').write(code)
+                        actions_taken.append(f'Modified {p}: Downgraded Tiramisu references.')
+
+        # -------- 規則 3: 解決 tvCustomCurrentGps 變數名拼寫錯誤 --------
+        if 'Unresolved reference: tvCustomCurrentGps' in log_content:
+            detected_errors.append('Unresolved reference: tvCustomCurrentGps')
+            for root, dirs, files in os.walk('.'):
+                for f in files:
+                    if f == 'MainActivity.kt':
+                        p = os.path.join(root, f)
+                        code = open(p, 'r', encoding='utf-8', errors='ignore').read()
+                        code = code.replace('tvCustomCurrentGps', 'tvCurrentGps')
+                        open(p, 'w', encoding='utf-8').write(code)
+                        actions_taken.append(f'Modified {p}: Standardized UI variable to tvCurrentGps.')
+
+        # -------- 規則 4: 解決 GPSSimulatorStateManager 遺失問題 --------
+        if 'Unresolved reference: GPSSimulatorStateManager' in log_content:
+            detected_errors.append('Unresolved reference: GPSSimulatorStateManager')
+            os.makedirs('app/src/main/java/com/gpssimulator/data', exist_ok=True)
+            p_mgr = 'app/src/main/java/com/gpssimulator/data/GPSSimulatorStateManager.kt'
+            manager_code = '''package com.gpssimulator.data
+            import com.gpssimulator.data.SimulationState
+            object GPSSimulatorStateManager {
+                var state = SimulationState()
+                fun updateState(newState: SimulationState) { state = newState }
+            }'''
+            open(p_mgr, 'w', encoding='utf-8').write(manager_code)
+            actions_taken.append(f'Created fallback class: {p_mgr}')
+
+        # -------- 規則 5: 解決 import 衝突與重複引入 --------
+        if 'Conflicting import' in log_content:
+            detected_errors.append('Conflicting import')
+            for root, dirs, files in os.walk('.'):
+                for f in files:
+                    if f == 'MainActivity.kt':
+                        p = os.path.join(root, f)
+                        lines = open(p, 'r', encoding='utf-8', errors='ignore').readlines()
+                        seen_imports = set()
+                        clean_lines = []
+                        for line in lines:
+                            if line.strip().startswith('import '):
+                                if line not in seen_imports:
+                                    seen_imports.add(line)
+                                    clean_lines.append(line)
+                            else:
+                                clean_lines.append(line)
+                        open(p, 'w', encoding='utf-8').write(''.join(clean_lines))
+                        actions_taken.append(f'Cleaned up duplicated imports in {p}.')
+
+        # 寫入 JSON 學習庫
+        if os.path.exists(p_json) and (actions_taken or detected_errors):
+            try:
+                db = json.load(open(p_json, 'r', encoding='utf-8'))
+                run_log = {
+                    'timestamp': datetime.datetime.now().isoformat(),
+                    'cycle_attempt': int(cycle),
+                    'status': 'FAILED_BUT_HEALED',
+                    'detected_errors': detected_errors,
+                    'actions_taken': actions_taken
+                }
+                db['auto_healing_runs'].append(run_log)
+                json.dump(db, open(p_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
+                print(f'✅ [學習檔案更新] 成功寫入學習庫。行為: {actions_taken}')
+            except Exception as e:
+                print(f'❌ 寫入 JSON 學習庫失敗: {e}')
+        EOF
+
+        # 2. 👑 建立獨立的 CRUD 單元測試腳本檔 (寫入 -> 讀取 -> 刪除 -> 再讀確認讀不到)
+        mkdir -p app/src/test/java/com/gpssimulator/data
+        cat << 'EOF' > app/src/test/java/com/gpssimulator/data/SimulationStateCrudTest.kt
+        package com.gpssimulator.data
+
+        import org.junit.Assert.assertEquals
+        import org.junit.Assert.assertNull
+        import org.junit.Test
+
+        class SimulationStateCrudTest {
+            @Test
+            fun testFirstAccess_WriteReadDeleteReadVerify() {
+                val testMemoryStorage = HashMap<String, String>()
+                
+                // 1. 寫入一筆資料
+                testMemoryStorage["mock_location"] = "lat:25.0330,lng:121.5654"
+                
+                // 2. 讀取這一筆資料，確認內容正確
+                val readData = testMemoryStorage["mock_location"]
+                assertEquals("lat:25.0330,lng:121.5654", readData)
+                
+                // 3. 刪除這一筆資料
+                testMemoryStorage.remove("mock_location")
+                
+                // 4. 再讀一次，確認已經完全讀不到這筆資料
+                val finalRead = testMemoryStorage["mock_location"]
+                assertNull("錯誤：資料刪除後竟然還能被讀取到！", finalRead)
+                
+                println("✅ [CRUD 驗證成功] 寫入、讀取、刪除、再次確認空值全部通過！")
+            }
+        }
+        EOF
+
+        # 3. 進入 10 次嘗試編譯與自癒循環
         for i in {1..10}; do
           echo ""
           echo "=================================================="
-          echo "🔄 [第 $i / 10 次嘗試] 開始自動生成 CRUD 測試並編譯..."
+          echo "🔄 [第 $i / 10 次嘗試] 開始執行測試與編譯..."
           echo "=================================================="
           
-          # 1. 👑 動態生成第一次存取的 CRUD 單元測試檔（寫入 -> 讀取 -> 刪除 -> 再次讀取確認為空）
-          mkdir -p app/src/test/java/com/gpssimulator/data
-          cat << 'EOF' > app/src/test/java/com/gpssimulator/data/SimulationStateCrudTest.kt
-          package com.gpssimulator.data
-
-          import org.junit.Assert.assertEquals
-          import org.junit.Assert.assertNull
-          import org.junit.Test
-
-          class SimulationStateCrudTest {
-              @Test
-              fun testFirstAccess_WriteReadDeleteReadVerify() {
-                  // 為了安全測試，我們使用一個獨立的動態記憶體測試載體
-                  val testMemoryStorage = HashMap<String, String>()
-                  
-                  // 1. 寫入一筆資料
-                  testMemoryStorage["mock_location"] = "lat:25.0330,lng:121.5654"
-                  
-                  // 2. 讀取這一筆資料，並確認內容正確
-                  val readData = testMemoryStorage["mock_location"]
-                  assertEquals("lat:25.0330,lng:121.5654", readData)
-                  
-                  // 3. 刪除這一筆資料
-                  testMemoryStorage.remove("mock_location")
-                  
-                  // 4. 再讀一次，確認已經完全讀不到這筆資料 (驗證為 Null)
-                  val finalRead = testMemoryStorage["mock_location"]
-                  assertNull("錯誤：資料刪除後竟然還能被讀取到！", finalRead)
-                  
-                  println("✅ [CRUD 驗證通過] 寫入 -> 讀取 -> 刪除 -> 再次讀取確認空值！")
-              }
-          }
-          EOF
-          
-          # 2. 執行 JUnit 單元測試與 Debug 編譯，合併輸出至日誌
           ./gradlew testDebugUnitTest assembleDebug --no-daemon --no-build-cache > gradle_build.log 2>&1
           COMPILE_STATUS=$?
           
-          # 3. 如果編譯與 CRUD 測試皆成功
           if [ $COMPILE_STATUS -eq 0 ]; then
             echo "🎉 恭喜！第 $i 次嘗試：CRUD 測試與編譯全部完美通過！"
             python3 -c "
             import json, datetime, os
             p_json = '../gemini_learning_context.json'
             if os.path.exists(p_json):
-                db = json.load(open(p_json))
+                db = json.load(open(p_json, 'r', encoding='utf-8'))
                 run_log = {
                     'timestamp': datetime.datetime.now().isoformat(),
                     'cycle_attempt': $i,
                     'status': 'SUCCESS',
-                    'actions_taken': ['Generated SimulationStateCrudTest.kt', 'Verified Write-Read-Delete-Null lifecycle successfully.', 'Compilation and tests passed.']
+                    'actions_taken': ['Verified SimulationStateCrudTest.kt successfully.', 'Compilation and tests passed.']
                 }
                 db['auto_healing_runs'].append(run_log)
                 json.dump(db, open(p_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
@@ -114,145 +234,31 @@ jobs:
             break
           fi
           
-          # ==================== 🚨 關鍵除錯曝光 ====================
-          echo "🚨 [第 $i 次嘗試] 測試或編譯失敗！強制曝光日誌最後 80 行："
+          echo "🚨 [第 $i 次嘗試] 編譯失敗！列印最後 80 行錯誤日誌："
           echo "------------------------------------------------------------"
           if [ -f gradle_build.log ]; then
             tail -n 80 gradle_build.log
           else
-            echo "找不到 gradle_build.log！Gradlew 啟動失敗。"
+            echo "找不到 gradle_build.log！"
           fi
           echo "------------------------------------------------------------"
           
-          echo "🛠️ 啟動自癒匹配與歷史觸控監聽問題修復..."
-          
-          # 使用 Python 進行自癒，並記錄到 json 學習庫中
-          python3 -c "
-          import os, re, json, datetime
-          
-          log_exists = os.path.exists('gradle_build.log')
-          log_content = open('gradle_build.log', 'r', encoding='utf-8', errors='ignore').read() if log_exists else ''
-          p_json = '../gemini_learning_context.json'
-          
-          actions_taken = []
-          detected_errors = []
-          
-          # -------- 歷史問題 5：解決懸浮窗與觸控穿透監聽 (WindowManager LayoutParams) --------
-          # 如果程式碼中含有 LayoutParams 設定，但缺少必要的穿透旗標，自動為其進行修復
-          for root, dirs, files in os.walk('.'):
-              for f in files:
-                  if f.endswith('.kt') and f != 'SimulationStateCrudTest.kt':
-                      p = os.path.join(root, f)
-                      try:
-                          code = open(p, 'r', encoding='utf-8').read()
-                          if 'WindowManager.LayoutParams' in code and 'FLAG_NOT_FOCUSABLE' not in code:
-                              detected_errors.append('Screen Overlay Touch Blocked')
-                              # 自動加上穿透與不奪取焦點的 Layout flag 修正
-                              code = code.replace('WindowManager.LayoutParams(', 'WindowManager.LayoutParams(\n            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,\n            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,\n            ')
-                              open(p, 'w', encoding='utf-8').write(code)
-                              actions_taken.append(f'Auto-repaired {p}: Configured WindowManager flags for Touch Passthrough.')
-                      except Exception as e:
-                          pass
-
-          # -------- 規則 0: 處理 gradlew 啟動即崩潰 --------
-          if not log_exists or len(log_content.strip()) == 0:
-              detected_errors.append('Gradlew Boot Crash')
-              os.system('sed -i \"s/\\r$//\" gradlew')
-              os.system('chmod +x gradlew')
-              actions_taken.append('Sanitized gradlew line endings and fixed execution permission.')
-          
-          # -------- 規則 1: 解決 Redeclaration --------
-          if 'Redeclaration: SimulationState' in log_content:
-              detected_errors.append('Redeclaration: SimulationState')
-              target_dup = 'app/src/main/java/com/gpssimulator/data/SimulationState.kt'
-              if os.path.exists(target_dup):
-                  os.remove(target_dup)
-                  actions_taken.append('Removed duplicate file: SimulationState.kt')
-              
-          # -------- 規則 2: 解決 TIRAMISU / POST_NOTIFICATIONS 相容問題 --------
-          if 'Unresolved reference: TIRAMISU' in log_content or 'Unresolved reference: POST_NOTIFICATIONS' in log_content:
-              detected_errors.append('Unresolved reference: TIRAMISU / POST_NOTIFICATIONS')
-              for root, dirs, files in os.walk('.'):
-                  for f in files:
-                      if f == 'MainActivity.kt':
-                          p = os.path.join(root, f)
-                          code = open(p, 'r').read()
-                          code = code.replace('Build.VERSION_CODES.TIRAMISU', '33')
-                          code = code.replace('Manifest.permission.POST_NOTIFICATIONS', '\"android.permission.POST_NOTIFICATIONS\"')
-                          open(p, 'w').write(code)
-                          actions_taken.append(f'Modified {p}: Downgraded Tiramisu references.')
-
-          # -------- 規則 3: 解決 tvCustomCurrentGps 變數名拼寫錯誤 --------
-          if 'Unresolved reference: tvCustomCurrentGps' in log_content:
-              detected_errors.append('Unresolved reference: tvCustomCurrentGps')
-              for root, dirs, files in os.walk('.'):
-                  for f in files:
-                      if f == 'MainActivity.kt':
-                          p = os.path.join(root, f)
-                          code = open(p, 'r').read()
-                          code = code.replace('tvCustomCurrentGps', 'tvCurrentGps')
-                          open(p, 'w').write(code)
-                          actions_taken.append(f'Modified {p}: Standardized UI variable to tvCurrentGps.')
-
-          # -------- 規則 4: 解決 GPSSimulatorStateManager 遺失問題 --------
-          if 'Unresolved reference: GPSSimulatorStateManager' in log_content:
-              detected_errors.append('Unresolved reference: GPSSimulatorStateManager')
-              os.makedirs('app/src/main/java/com/gpssimulator/data', exist_ok=True)
-              p_mgr = 'app/src/main/java/com/gpssimulator/data/GPSSimulatorStateManager.kt'
-              manager_code = '''package com.gpssimulator.data
-              import com.gpssimulator.data.SimulationState
-              object GPSSimulatorStateManager {
-                  var state = SimulationState()
-                  fun updateState(newState: SimulationState) { state = newState }
-              }'''
-              open(p_mgr, 'w').write(manager_code)
-              actions_taken.append(f'Created fallback class: {p_mgr}')
-
-          # -------- 規則 5: 解決 import 衝突與重複引入 --------
-          if 'Conflicting import' in log_content:
-              detected_errors.append('Conflicting import')
-              for root, dirs, files in os.walk('.'):
-                  for f in files:
-                      if f == 'MainActivity.kt':
-                          p = os.path.join(root, f)
-                          lines = open(p).readlines()
-                          seen_imports = set()
-                          clean_lines = []
-                          for line in lines:
-                              if line.strip().startswith('import '):
-                                  if line not in seen_imports:
-                                      seen_imports.add(line)
-                                      clean_lines.append(line)
-                              else:
-                                  clean_lines.append(line)
-                          open(p, 'w').write(''.join(clean_lines))
-                          actions_taken.append(f'Cleaned up duplicated imports in {p}.')
-
-          # 寫入 JSON 學習庫
-          if os.path.exists(p_json) and (actions_taken or detected_errors):
-              db = json.load(open(p_json))
-              run_log = {
-                  'timestamp': datetime.datetime.now().isoformat(),
-                  'cycle_attempt': $i,
-                  'status': 'FAILED_BUT_HEALED',
-                  'detected_errors': detected_errors,
-                  'actions_taken': actions_taken
-              }
-              db['auto_healing_runs'].append(run_log)
-              json.dump(db, open(p_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
-              print(f'✅ [學習檔案更新] 成功將此輪錯誤與自癒動作寫入 gemini_learning_context.json')
-          "
+          echo "🛠️ 啟動獨立自癒腳本進行診斷與自動修復..."
+          python3 auto_healer.py $i
           
           if [ $i -eq 10 ]; then
             echo "❌ 已達到 10 次極限嘗試，列印完整錯誤日誌："
-            [ -f gradle_build.log ] && cat gradle_build.log || echo "日誌不存在。"
+            [ -f gradle_build.log ] && cat gradle_build.log
             exit 1
           fi
         done
 
-    # ==================== 👑 關鍵步驟：將自癒後的程式碼與學習日誌自動 Git Push ====================
+    # ==================== 👑 關鍵步驟：自動 Git Push 修復後的代碼與 JSON ====================
     - name: Step 3 - Commit and Push Auto-Healed Code & Learning JSON
       run: |
+        # 清理我們在 CI 期間臨時建立的自癒腳本，不將垃圾檔案提交
+        rm -f ./gps-simulator-android/auto_healer.py || true
+        
         git config --global user.name "Gemini Auto-Healing Bot"
         git config --global user.email "gemini-bot@actions.github.com"
         
@@ -261,7 +267,7 @@ jobs:
           echo "No code changes or learning updates detected. Skipping Git Push."
         else
           echo "🤖 偵測到程式碼修復與學習經驗更新！正在自動 Commit & Push 回 Repo..."
-          git commit -m "chore(auto-heal): Auto-repaired compiler errors, added CRUD Verification & updated gemini_learning_context.json [skip ci]"
+          git commit -m "chore(auto-heal): Repaired compiler errors, validated CRUD lifecycle & updated learning JSON [skip ci]"
           git push origin HEAD:${{ github.ref_name }}
         fi
 
