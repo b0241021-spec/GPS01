@@ -33,7 +33,7 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 步驟一：客製化高相容 UI 與邏輯寫入 ====================
+    # ==================== 步驟一：覆寫客製化佈局與邏輯 ====================
     - name: Step 1 - Force Override Custom Layout & Logic
       run: |
         cd gps-simulator-android
@@ -46,7 +46,7 @@ jobs:
         mkdir -p app/src/main/java/com/gpssimulator/service
         mkdir -p app/src/main/java/com/gpssimulator/ui
 
-        # 1. 寫入客製化 XML 佈局
+        # 1. XML 佈局
         cat << 'XML' > app/src/main/res/layout/activity_main.xml
         <?xml version="1.0" encoding="utf-8"?>
         <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
@@ -131,7 +131,7 @@ jobs:
         </ScrollView>
         XML
 
-        # 2. 數據狀態 Class
+        # 2. Data Class
         cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/data/SimulationState.kt
         package com.gpssimulator.data
         data class SimulationState(
@@ -146,7 +146,7 @@ jobs:
         )
         KOTLIN
 
-        # 3. 核心背景模擬 Service
+        # 3. Service
         cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt
         package com.gpssimulator.service
 
@@ -249,7 +249,7 @@ jobs:
         }
         KOTLIN
 
-        # 4. 注入精準綁定的 MainActivity
+        # 4. MainActivity
         cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/ui/MainActivity.kt
         package com.gpssimulator.ui
 
@@ -293,79 +293,4 @@ jobs:
                 }
 
                 etLat = findViewById(R.id.etCustomLat)
-                etLng = findViewById(R.id.etCustomLng)
-                tvCurrentGps = findViewById(R.id.tvCustomCurrentGps)
-                sbSpeed = findViewById(R.id.sbCustomSpeed)
-                sbDirection = findViewById(R.id.sbCustomDirection)
-                tvSpeedVal = findViewById(R.id.tvCustomSpeedVal)
-                tvDirVal = findViewById(R.id.tvCustomDirVal)
-                cbSimulate = findViewById(R.id.cbCustomSimulate)
-                btnTest = findViewById(R.id.btnCustomTest)
-
-                val seekListener = object : SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) {
-                        if (s == sbSpeed) tvSpeedVal.text = "模擬速度: $p km/hr"
-                        if (s == sbDirection) tvDirVal.text = "模擬方向: $p°"
-                        syncParamsFromUi()
-                    }
-                    override fun onStartTrackingTouch(s: SeekBar?) {}
-                    override fun onStopTrackingTouch(s: SeekBar?) {}
-                }
-                sbSpeed.setOnSeekBarChangeListener(seekListener)
-                sbDirection.setOnSeekBarChangeListener(seekListener)
-
-                cbSimulate.setOnCheckedChangeListener { _, isChecked ->
-                    syncParamsFromUi()
-                    service?.toggleSimulation(isChecked)
-                }
-
-                btnTest.setOnClickListener {
-                    val currentStatus = service?.uiState?.value?.isTestRunning ?: false
-                    val nextStatus = !currentStatus
-                    service?.toggleTest(nextStatus)
-                    
-                    etLat.isEnabled = !nextStatus
-                    etLng.isEnabled = !nextStatus
-                    sbSpeed.isEnabled = !nextStatus
-                    sbDirection.isEnabled = !nextStatus
-                    cbSimulate.isEnabled = !nextStatus
-                    
-                    btnTest.text = if (nextStatus) "停止測試 (已鎖定面板)" else "開始測試"
-                }
-
-                val intent = Intent(this, GPSSimulationService::class.java)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
-                bindService(intent, connection, Context.BIND_AUTO_CREATE)
-            }
-
-            private fun syncParamsFromUi() {
-                val lat = etLat.text.toString().toDoubleOrNull() ?: 25.0330
-                val lng = etLng.text.toString().toDoubleOrNull() ?: 121.5654
-                val speed = sbSpeed.progress.toFloat()
-                val dir = sbDirection.progress
-                service?.updateParams(lat, lng, speed, dir)
-            }
-
-            private val connection = object : ServiceConnection {
-                override fun onServiceConnected(n: ComponentName?, s: IBinder?) {
-                    service = (s as GPSSimulationService.LocalBinder).getService()
-                    isBound = true
-                    observeState()
-                }
-                override fun onServiceDisconnected(n: ComponentName?) { isBound = false }
-            }
-
-            private fun observeState() {
-                lifecycleScope.launch {
-                    service?.uiState?.collect { state ->
-                        withContext(Dispatchers.Main) {
-                            tvCustomCurrentGps.text = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
-                        }
-                    }
-                }
-            }
-
-            override fun onDestroy() {
-                super.onDestroy()
-                if (isBound) { unbindService(connection); isBound = false }
-            }
+                etLng =
