@@ -34,13 +34,23 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    - name: Step 1 - Pre-initialize Wrapper
+    # ==================== 👑 關鍵防禦：修復 Linux 執行相容性 ====================
+    - name: Step 1 - Pre-initialize and Sanitize Wrapper
       working-directory: ./gps-simulator-android
       run: |
+        # 1. 重新生成強健的 Gradle Wrapper
         gradle wrapper --gradle-version 7.5
+        
+        # 2. 👑 極重要：消除 Windows 換行符號 (CRLF -> LF)，防止 Linux 執行時閃退
+        sed -i 's/\r$//' gradlew
+        
+        # 3. 賦予可執行權限
         chmod +x gradlew
+        
+        echo "=== Gradle Wrapper 健全度檢查 ==="
+        ls -la gradlew
 
-    # ==================== 🧠 核心：自癒編譯 + 強制錯誤輸出 + 自動寫入 JSON ====================
+    # ==================== 🧠 核心：自癒編譯 + 自動記錄學習 JSON ====================
     - name: Step 2 - Execute 10-Cycle Auto-Healing & Debugging Log Engine
       working-directory: ./gps-simulator-android
       run: |
@@ -52,10 +62,11 @@ jobs:
           echo "🔄 [第 $i / 10 次嘗試] 開始編譯..."
           echo "=================================================="
           
-          # 執行編譯，並將錯誤輸出完整記錄到 gradle_build.log (不使用 daemon 以免日誌被截斷)
+          # 1. 執行編譯，並將錯誤輸出完整記錄到 gradle_build.log (不使用 daemon 以免日誌被截斷)
           ./gradlew clean assembleDebug --no-daemon --no-build-cache > gradle_build.log 2>&1
           COMPILE_STATUS=$?
           
+          # 2. 如果編譯成功
           if [ $COMPILE_STATUS -eq 0 ]; then
             echo "🎉 恭喜！第 $i 次編譯完美成功！"
             python3 -c "
@@ -67,7 +78,7 @@ jobs:
                     'timestamp': datetime.datetime.now().isoformat(),
                     'cycle_attempt': $i,
                     'status': 'SUCCESS',
-                    'actions_taken': ['Compilation passed successfully. Code structure stabilized.']
+                    'actions_taken': ['Compilation passed successfully. System compatibility verified.']
                 }
                 db['auto_healing_runs'].append(run_log)
                 json.dump(db, open(p_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
@@ -75,27 +86,36 @@ jobs:
             break
           fi
           
-          # ==================== 🚨 關鍵除錯曝光：如果編譯失敗，強制印出日誌 ====================
-          echo "🚨 [第 $i 次嘗試] 編譯失敗！強制印出編譯器最後 80 行日誌以供肉眼/AI 診斷："
+          # ==================== 🚨 關鍵除錯曝光 ====================
+          echo "🚨 [第 $i 次嘗試] 編譯失敗！強制印出最後 80 行日誌以供診斷："
           echo "------------------------------------------------------------"
-          tail -n 80 gradle_build.log
+          if [ -f gradle_build.log ]; then
+            tail -n 80 gradle_build.log
+          else
+            echo "找不到 gradle_build.log 檔案！這代表 gradlew 連啟動都沒有啟動成功。"
+          fi
           echo "------------------------------------------------------------"
-          
-          # 用 grep 找關鍵的 e: (Kotlin 編譯錯誤標記) 並加亮顯示
-          echo "🔍 篩選出具體的 Kotlin 編譯錯誤行："
-          grep -E "e: " gradle_build.log || echo "沒有在日誌中發現傳統的 Kotlin 編譯錯誤標記 (e:)，可能為 Gradle 設定或 JVM 崩潰錯誤。"
           
           echo "🛠️ 啟動自癒規則匹配進行原地手術..."
           
-          # 使用 Python 進行深度檔案對齊自癒，並更新 json 記憶庫
+          # 使用 Python 進行多維度自癒，並動態寫入學習日誌 json
           python3 -c "
           import os, re, json, datetime
           
-          log_content = open('gradle_build.log', 'r', encoding='utf-8', errors='ignore').read()
+          log_exists = os.path.exists('gradle_build.log')
+          log_content = open('gradle_build.log', 'r', encoding='utf-8', errors='ignore').read() if log_exists else ''
           p_json = '../gemini_learning_context.json'
           
           actions_taken = []
           detected_errors = []
+          
+          # -------- 規則 0: 處理 gradlew 啟動即崩潰的問題 (全新加入的歷史經驗) --------
+          if not log_exists or len(log_content.strip()) == 0:
+              detected_errors.append('Gradlew Boot Crash / Empty Log')
+              # 強制用 bash 重新轉檔一次，並修復執行權限
+              os.system('sed -i \"s/\\r$//\" gradlew')
+              os.system('chmod +x gradlew')
+              actions_taken.append('Sanitized gradlew line endings (CRLF -> LF) and restored execution permissions.')
           
           # -------- 規則 1: 解決 Redeclaration --------
           if 'Redeclaration: SimulationState' in log_content:
@@ -176,12 +196,12 @@ jobs:
               }
               db['auto_healing_runs'].append(run_log)
               json.dump(db, open(p_json, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
-              print(f'✅ [自癒紀錄] 成功寫入學習庫。')
+              print(f'✅ [學習檔案更新] 成功將此輪錯誤與自癒動作寫入 gemini_learning_context.json')
           "
           
           if [ $i -eq 10 ]; then
             echo "❌ 已達到 10 次極限嘗試，列印完整錯誤日誌："
-            cat gradle_build.log
+            [ -f gradle_build.log ] && cat gradle_build.log || echo "日誌不存在。"
             exit 1
           fi
         done
