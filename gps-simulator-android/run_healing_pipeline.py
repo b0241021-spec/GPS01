@@ -47,23 +47,49 @@ def init_clean_brain():
 def save_detailed_report(success_cycle=None):
     print('📝 正在輸出最終運作狀況分析報告...')
     try:
-        brain_data = json.load(open(p_json, 'r', encoding='utf-8'))
-        brain_content = json.dumps(brain_data, indent=2, ensure_ascii=False)
-    except:
-        brain_content = "{}"
+        with open(p_json, 'r', encoding='utf-8') as f:
+            brain_data = json.load(f)
+    except Exception:
+        brain_data = {}
 
     build_log = "（無日誌）"
     if os.path.exists('gradle_build.log'):
-        build_log = open('gradle_build.log', 'r', encoding='utf-8', errors='ignore').read()[-8000:]
+        try:
+            build_log = open('gradle_build.log', 'r', encoding='utf-8', errors='ignore').read()[-8000:]
+        except Exception:
+            pass
 
-    report = f"# Gemini AI 運行狀況追蹤報告\n"
-    report += f"產出時間: {datetime.datetime.now().isoformat()}\n"
-    report += f"最終結果: {'🎉 成功通過' if success_cycle else '❌ 10輪皆失敗'}\n\n"
-    report += f"## 📂 大腦目前記錄內容 (包含每次修復軌跡)\n```json\n{brain_content}\n```\n\n"
-    report += f"## 📝 最後一次 Gradle 編譯錯誤日誌\n```text\n{build_log}\n```\n"
+    # 建立結構化 Markdown
+    report = f"# 📊 Gemini AI Auto-Healing Diagnostic Report\n"
+    report += f"Generated At: {datetime.datetime.now().isoformat()}\n"
+    report += f"Status: {'🎉 SUCCESS (Cycle ' + str(success_cycle) + ')' if success_cycle else '❌ FAILED (All 10 cycles)'}\n\n"
     
-    open(report_file, 'w', encoding='utf-8').write(report)
-    print(f'✅ 報告已儲存至 {report_file}')
+    report += "## 🧠 1. 核心去重資料庫 (Failed Code Hashes)\n"
+    report += "為了防止鬼打牆，以下是編譯失敗過的程式碼特徵 MD5 集合：\n"
+    report += f"```json\n{json.dumps(brain_data.get('failed_code_hashes', []), indent=2)}\n```\n\n"
+
+    report += "## 🔄 2. 歷史 10 次自癒完整軌跡 (Detailed Run Logs)\n"
+    report += "點擊下方展開各輪次的詳細報錯、Prompt、與 Gemini 給出的程式碼：\n\n"
+
+    runs = brain_data.get('auto_healing_runs', [])
+    for run in runs:
+        cycle = run.get('cycle_attempt', '?')
+        result_str = run.get('result', 'UNKNOWN')
+        
+        report += f"### 📍 第 {cycle} 輪嘗試 (結果: {result_str})\n"
+        report += "<details>\n<summary>🔍 展開查看第 " + str(cycle) + " 輪的詳細分析與代碼</summary>\n\n"
+        
+        report += "#### ❌ 讀取到的錯誤內容\n"
+        report += f"
+http://googleusercontent.com/immersive_entry_chip/0
+
+---
+
+### 🎯 接下來你可以這樣做：
+1. **直接將程式碼推送到 GitHub。**
+2. 當自癒失敗、Workflow 結束並自動 Commit 提交後，在你的 GitHub 項目根目錄會出現 `auto_heal_failure_report.md`。
+3. **不用複製它！** 直接把該檔案在瀏覽器上的網址（例如：`https://github.com/你的用戶名/你的倉庫/blob/main/auto_heal_failure_report.md`）複製並**直接貼給我**。
+4. 我會直接讀取該網頁中的 Markdown，為你進行極致深度的自癒瓶頸分析！
 
 def main():
     print('=== 🚀 啟動全新記憶反思型自癒管線 ===')
