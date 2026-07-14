@@ -33,20 +33,19 @@ jobs:
         gradle-version: '7.5'
         build-root-directory: ./gps-simulator-android
 
-    # ==================== 步驟一：修復 Kotlin 註解與 Data Class 欄位 ====================
-    - name: Step 1 - Fix Kotlin Comments & Data Class Fields
+    # ==================== 步驟一：重構隔離架構，確保實機 UI 絕對流暢 ====================
+    - name: Step 1 - Real Device UI Thread Isolation Fix
       run: |
         cd gps-simulator-android
         set -e
         
-        # 清理快取與舊程式
         rm -rf .gradle build app/build || true
         rm -rf app/src/main/java/com/gpssimulator/data/* || true
         mkdir -p app/src/main/java/com/gpssimulator/data
         mkdir -p app/src/main/java/com/gpssimulator/service
         mkdir -p app/src/main/java/com/gpssimulator/ui
 
-        # 👑 1. 修正註解後的標準 Data Class
+        # 1. 注入標準 Data Class
         cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/data/SimulationState.kt
         package com.gpssimulator.data
         data class SimulationState(
@@ -61,7 +60,7 @@ jobs:
         )
         KOTLIN
 
-        # 👑 2. 注入 Service 邏輯
+        # 2. 👑 注入非同步安全 Service：將 Mock 定位全面丟進 Dispatchers.IO，絕對不卡死主執行緒 UI
         cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/service/GPSSimulationService.kt
         package com.gpssimulator.service
 
@@ -122,7 +121,8 @@ jobs:
 
             private fun restartSimulationLoop() {
                 job?.cancel()
-                job = CoroutineScope(Dispatchers.Main).launch {
+                // 👑 關鍵修復：改用 Dispatchers.IO 執行耗時的位置計算與底層發送，真機再怎麼丟 Exception 也絕不卡死 UI
+                job = CoroutineScope(Dispatchers.IO).launch {
                     while (isActive && _uiState.value.isSimulating) {
                         val state = _uiState.value
                         val r = 6378137.0
@@ -152,8 +152,10 @@ jobs:
                                 }
                                 locMgr.setTestProviderLocation(p, mockLocation)
                             }
-                        } catch (e: Exception) { e.printStackTrace() }
-                        
+                        } catch (e: Exception) {
+                            // 這裡如果因為真機沒開開發者權限報錯，只打印不卡死
+                            e.printStackTrace()
+                        }
                         delay(1000)
                     }
                 }
@@ -163,7 +165,7 @@ jobs:
         }
         KOTLIN
 
-        # 👑 3. 注入對接的 MainActivity
+        # 3. 👑 注入真機主執行緒防禦的 MainActivity
         cat << 'KOTLIN' > app/src/main/java/com/gpssimulator/ui/MainActivity.kt
         package com.gpssimulator.ui
 
@@ -176,8 +178,10 @@ jobs:
         import androidx.core.app.ActivityCompat
         import androidx.lifecycle.lifecycleScope
         import com.gpssimulator.service.GPSSimulationService
+        import kotlinx.coroutines.Dispatchers
         import kotlinx.coroutines.flow.collect
         import kotlinx.coroutines.launch
+        import kotlinx.coroutines.withContext
 
         class MainActivity : AppCompatActivity() {
             private var service: GPSSimulationService? = null
@@ -213,8 +217,13 @@ jobs:
                 val swView = findViewByNames<android.view.View>("switch_simulate", "simulateSwitch", "btn_simulate", "toggle_simulate", "mock_switch")
                 val btnTestView = findViewByNames<android.view.View>("btn_start_test", "startTestButton", "btn_test", "test_button", "start_test")
 
+                // 👑 關鍵修復：滑塊滑動時，第一時間在 UI 主執行緒刷新畫面的數字，絕不延遲
                 val seekListener = object : SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) { syncParamsFromUi() }
+                    override fun onProgressChanged(s: SeekBar?, p: Int, f: Boolean) {
+                        if (s == sbSpeed) tvSpeedVal?.text = "$p km/hr"
+                        if (s == sbDirection) tvDirVal?.text = "$p°"
+                        syncParamsFromUi()
+                    }
                     override fun onStartTrackingTouch(s: SeekBar?) {}
                     override fun onStopTrackingTouch(s: SeekBar?) {}
                 }
@@ -254,9 +263,6 @@ jobs:
                 val lng = etLng?.text?.toString()?.toDoubleOrNull() ?: 121.5654
                 val speed = sbSpeed?.progress?.toFloat() ?: 0f
                 val dir = sbDirection?.progress ?: 0
-                
-                tvSpeedVal?.text = "${speed.toInt()} km/hr"
-                tvDirVal?.text = "$dir°"
                 service?.updateParams(lat, lng, speed, dir)
             }
 
@@ -272,8 +278,11 @@ jobs:
             private fun observeState() {
                 lifecycleScope.launch {
                     service?.uiState?.collect { state ->
-                        val gpsFormattedText = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
-                        tvCurrentGps?.text = gpsFormattedText
+                        // 👑 關鍵修復：強制在 Main 執行緒更新當前經緯度文字，防止真機無視 UI 更新
+                        withContext(Dispatchers.Main) {
+                            val gpsFormattedText = String.format("當前位置 (經緯度): %.6f, %.6f", state.currentLatitude, state.currentLongitude)
+                            tvCurrentGps?.text = gpsFormattedText
+                        }
                     }
                 }
             }
@@ -293,9 +302,8 @@ jobs:
         }
         KOTLIN
 
-        # 4. 配置 Manifest、鏡像與 Gradle 構建腳本
+        # 4. 配置環境、清單與構建配置
         rm -f build.gradle settings.gradle app/build.gradle app/src/main/AndroidManifest.xml || true
-        
         cat << 'XML' > app/src/main/AndroidManifest.xml
         <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.gpssimulator">
             <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -342,7 +350,7 @@ jobs:
         git config --global user.email "gemini-bot@github.com"
         git remote set-url origin https://x-access-token:${PERSONAL_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
         git add .
-        git commit -m "🤖 滿血修正語法錯誤版 APK 出貨！ [skip ci]" || exit 0
+        git commit -m "🤖 實機執行緒安全隔離版 APK 出貨！ [skip ci]" || exit 0
         git push --force
 
     - name: Upload APK Artifact
